@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTH-CS-03 | Business-Risk-Ranked Vulnerability Scanner</title>
+    <title>HTH-CS-03 | Business-Risk Scanner & Remediation Planner</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -12,57 +12,102 @@
         .badge-HIGH { background-color: #f97316; color: #ffffff; }
         .badge-MEDIUM { background-color: #eab308; color: #000000; }
         .badge-LOW { background-color: #3b82f6; color: #ffffff; }
+        .badge-SELECTED { background-color: #10b981; color: #ffffff; }
+        .badge-DEFERRED { background-color: #64748b; color: #ffffff; }
         .table-dark { background-color: #1e293b; --bs-table-bg: #1e293b; }
         .hero-title { font-weight: 700; background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .metric-card { background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid #334155; }
     </style>
 </head>
 <body class="p-4">
     <div class="container-fluid">
         <header class="mb-4 pb-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
             <div>
-                <h1 class="hero-title h2 mb-1">HTH-CS-03: Business-Risk Vulnerability Scanner</h1>
-                <p class="text-secondary mb-0">Phase 1 Vertical Slice — Business-Context Risk Ranking Engine</p>
+                <h1 class="hero-title h2 mb-1">HTH-CS-03: Risk Scanner & Remediation Planner</h1>
+                <p class="text-secondary mb-0">Sprint 2 — Business-Risk Ranking + 0/1 Knapsack Remediation Optimization</p>
             </div>
-            <span class="badge bg-success px-3 py-2 fs-6">Phase 1 Active</span>
+            <span class="badge bg-primary px-3 py-2 fs-6">Sprint 2 Core Active</span>
         </header>
 
-        <!-- Target Scan Configuration Form -->
+        <!-- Target Scan & Capacity Configuration Form -->
         <div class="card mb-4 shadow">
             <div class="card-header border-secondary fw-semibold">
-                🛡️ Authorized Lab Target Scanner & Business Risk Configurator
+                🛡️ Target Configuration & Remediation Capacity Planner
             </div>
             <div class="card-body">
                 <form id="scanForm" class="row g-3">
-                    <div class="col-md-4">
-                        <label for="target" class="form-label text-light">Target IP / Hostname (Lab Environment Only)</label>
+                    <div class="col-md-3">
+                        <label for="target" class="form-label text-light">Target IP / Hostname</label>
                         <input type="text" class="form-control bg-dark text-light border-secondary" id="target" value="192.168.1.10" required>
-                        <div class="form-text text-secondary">Only private subnets (e.g. 192.168.x.x, 10.x.x.x, 127.0.0.1) permitted.</div>
+                        <div class="form-text text-secondary">Authorized private IP subnets only.</div>
                     </div>
-                    <div class="col-md-3">
-                        <label for="asset_criticality" class="form-label text-light">Asset Criticality (1.0 - 10.0)</label>
+                    <div class="col-md-2">
+                        <label for="asset_criticality" class="form-label text-light">Asset Criticality (1-10)</label>
                         <input type="number" step="0.5" min="1.0" max="10.0" class="form-control bg-dark text-light border-secondary" id="asset_criticality" value="10.0">
-                        <div class="form-text text-secondary">10 = Core DB / Payment System; 2 = Dev Box</div>
+                        <div class="form-text text-secondary">10 = Core DB; 2 = Sandbox</div>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="exposure" class="form-label text-light">Exposure Factor (0.1-1.0)</label>
+                        <input type="number" step="0.1" min="0.1" max="1.0" class="form-control bg-dark text-light border-secondary" id="exposure" value="1.0">
+                        <div class="form-text text-secondary">1.0 = Public; 0.1 = Airgapped</div>
                     </div>
                     <div class="col-md-3">
-                        <label for="exposure" class="form-label text-light">Exposure Factor (0.1 - 1.0)</label>
-                        <input type="number" step="0.1" min="0.1" max="1.0" class="form-control bg-dark text-light border-secondary" id="exposure" value="1.0">
-                        <div class="form-text text-secondary">1.0 = Internet-facing; 0.1 = Isolated Air-gapped</div>
+                        <label for="available_capacity" class="form-label text-light">Weekly Capacity (Hours)</label>
+                        <input type="number" step="1.0" min="0.0" max="100.0" class="form-control bg-dark text-light border-secondary" id="available_capacity" value="10.0">
+                        <div class="form-text text-secondary">Max engineering hours/week.</div>
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
+                    <div class="col-md-2 d-flex align-items-end gap-2">
                         <button type="submit" class="btn btn-primary w-100 fw-bold">RUN SCAN</button>
                     </div>
                 </form>
             </div>
         </div>
 
+        <!-- Remediation Plan Metrics Dashboard (Initially Hidden) -->
+        <div id="planSummary" class="row g-3 mb-4 d-none">
+            <div class="col-md-2.4 col-sm-6">
+                <div class="card p-3 metric-card text-center">
+                    <span class="text-secondary small fw-bold">TOTAL CAPACITY</span>
+                    <h3 id="metricCapacity" class="text-info mb-0">10.0 hrs</h3>
+                </div>
+            </div>
+            <div class="col-md-2.4 col-sm-6">
+                <div class="card p-3 metric-card text-center">
+                    <span class="text-secondary small fw-bold">EFFORT USED</span>
+                    <h3 id="metricUsed" class="text-warning mb-0">9.0 hrs</h3>
+                </div>
+            </div>
+            <div class="col-md-2.4 col-sm-6">
+                <div class="card p-3 metric-card text-center">
+                    <span class="text-secondary small fw-bold">REMAINING CAPACITY</span>
+                    <h3 id="metricRemaining" class="text-success mb-0">1.0 hrs</h3>
+                </div>
+            </div>
+            <div class="col-md-2.4 col-sm-6">
+                <div class="card p-3 metric-card text-center">
+                    <span class="text-secondary small fw-bold">RISK REDUCED (%)</span>
+                    <h3 id="metricPct" class="text-primary mb-0">87.5%</h3>
+                </div>
+            </div>
+            <div class="col-md-2.4 col-sm-6">
+                <div class="card p-3 metric-card text-center">
+                    <span class="text-secondary small fw-bold">SPRINT PLAN</span>
+                    <h3 id="metricCounts" class="text-light mb-0">3 / 2</h3>
+                    <small class="text-secondary">Selected / Deferred</small>
+                </div>
+            </div>
+        </div>
+
         <!-- Status & Guardrail Message -->
         <div id="statusAlert" class="alert alert-info d-none shadow-sm mb-4" role="alert"></div>
 
-        <!-- Ranked Findings Results Table -->
+        <!-- Ranked Findings & Remediation Plan Table -->
         <div class="card shadow">
             <div class="card-header border-secondary d-flex justify-content-between align-items-center">
-                <span class="fw-semibold">📊 Ranked Vulnerability Findings (Sorted by Business Risk Score, NOT Raw CVSS)</span>
-                <span id="findingCount" class="badge bg-secondary">0 Findings</span>
+                <span class="fw-semibold">📊 Risk-Ranked Vulnerabilities & Capacity-Optimized Remediation Roadmap</span>
+                <button id="btnGeneratePlan" class="btn btn-sm btn-success fw-bold px-3 d-none" onclick="triggerPlanGeneration()">
+                    ⚡ OPTIMIZE SPRINT PLAN (0/1 KNAPSACK)
+                </button>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -75,11 +120,11 @@
                                 <th>Port / Service</th>
                                 <th>Vulnerability</th>
                                 <th>Raw CVSS</th>
-                                <th>Exploitability</th>
-                                <th>Criticality</th>
-                                <th>Exposure</th>
                                 <th>Business Risk (BRS)</th>
                                 <th>Severity</th>
+                                <th>Effort (Hrs)</th>
+                                <th>Recommended Remediation Action</th>
+                                <th>Sprint Status</th>
                             </tr>
                         </thead>
                         <tbody id="findingsTableBody">
@@ -92,33 +137,41 @@
             </div>
         </div>
 
-        <!-- Methodology Callout Footer -->
+        <!-- Methodology Footer -->
         <div class="mt-4 p-3 card bg-dark border-secondary">
-            <h6 class="text-info mb-2">💡 Business Risk Scoring Methodology:</h6>
+            <h6 class="text-info mb-2">💡 Capacity-Constrained Remediation Optimizer (0/1 Knapsack):</h6>
             <p class="small text-secondary mb-0">
-                <strong>Formula:</strong> <code>Business Risk Score (BRS) = Exploitability × Asset Criticality × Exposure</code><br>
-                Notice how high CVSS vulnerabilities on low-criticality/low-exposure hosts rank LOWER than medium CVSS vulnerabilities on critical, exposed production assets.
+                The optimization engine uses dynamic programming to solve <code>Maximize Sum(Business Risk) subject to Sum(Remediation Effort) <= Available Capacity</code>.
+                Unlike naive top-N sorting, this guarantees the <strong>maximum possible risk reduction</strong> for any given weekly team bandwidth.
             </p>
         </div>
     </div>
 
     <script>
+        let currentFindings = [];
+
         document.getElementById('scanForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            await executeScanAndPlan();
+        });
+
+        async function executeScanAndPlan() {
             const statusAlert = document.getElementById('statusAlert');
             const tbody = document.getElementById('findingsTableBody');
             
             statusAlert.className = 'alert alert-warning shadow-sm mb-4 d-block';
-            statusAlert.innerText = 'Executing scan & computing Business Risk Scores...';
+            statusAlert.innerText = 'Scanning target & executing 0/1 Knapsack Remediation Optimization...';
 
             const payload = {
                 target: document.getElementById('target').value,
                 asset_criticality: parseFloat(document.getElementById('asset_criticality').value),
-                exposure: parseFloat(document.getElementById('exposure').value)
+                exposure: parseFloat(document.getElementById('exposure').value),
+                available_capacity: parseFloat(document.getElementById('available_capacity').value)
             };
 
             try {
-                const response = await fetch('/api/scan', {
+                // Fetch Optimized Remediation Plan directly
+                const response = await fetch('/api/plan', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -128,38 +181,62 @@
 
                 if (!response.ok) {
                     statusAlert.className = 'alert alert-danger shadow-sm mb-4 d-block';
-                    statusAlert.innerText = `Error: ${data.detail || 'Scan failed'}`;
+                    statusAlert.innerText = `Error: ${data.detail || 'Plan generation failed'}`;
                     return;
                 }
 
                 statusAlert.className = 'alert alert-success shadow-sm mb-4 d-block';
-                statusAlert.innerText = `Scan Successful! Guardrail verified target. Computed business risk for ${data.total_findings} findings.`;
-                document.getElementById('findingCount').innerText = `${data.total_findings} Findings`;
-
-                tbody.innerHTML = '';
-                data.findings.forEach((f, idx) => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td><strong>${idx + 1}</strong></td>
-                        <td><code>${f.finding_id}</code></td>
-                        <td>${f.target}</td>
-                        <td><span class="badge bg-secondary">${f.port}/${f.service}</span></td>
-                        <td><strong>${f.vulnerability}</strong><br><small class="text-secondary">${f.version}</small></td>
-                        <td><span class="text-warning font-monospace">${f.cvss}</span></td>
-                        <td>${f.exploitability}</td>
-                        <td>${f.asset_criticality}</td>
-                        <td>${f.exposure}</td>
-                        <td><strong class="text-info fs-5">${f.business_risk}</strong></td>
-                        <td><span class="badge badge-${f.severity} px-2 py-1">${f.severity}</span></td>
-                    `;
-                    tbody.appendChild(row);
-                });
+                statusAlert.innerText = `Optimization Complete! Selected ${data.selected_count} remediations using ${data.total_effort_used} hrs of capacity. Risk Reduced: ${data.risk_reduction_percentage}%.`;
+                
+                document.getElementById('btnGeneratePlan').classList.remove('d-none');
+                renderPlanResults(data);
 
             } catch (err) {
                 statusAlert.className = 'alert alert-danger shadow-sm mb-4 d-block';
                 statusAlert.innerText = `Connection Error: ${err.message}`;
             }
-        });
+        }
+
+        function triggerPlanGeneration() {
+            executeScanAndPlan();
+        }
+
+        function renderPlanResults(data) {
+            // Update Metric Cards
+            document.getElementById('planSummary').classList.remove('d-none');
+            document.getElementById('metricCapacity').innerText = `${data.available_capacity} hrs`;
+            document.getElementById('metricUsed').innerText = `${data.total_effort_used} hrs`;
+            document.getElementById('metricRemaining').innerText = `${data.remaining_capacity} hrs`;
+            document.getElementById('metricPct').innerText = `${data.risk_reduction_percentage}%`;
+            document.getElementById('metricCounts').innerText = `${data.selected_count} / ${data.deferred_count}`;
+
+            const tbody = document.getElementById('findingsTableBody');
+            tbody.innerHTML = '';
+
+            const allFindings = [...data.selected_vulnerabilities, ...data.deferred_vulnerabilities];
+            
+            allFindings.forEach((f, idx) => {
+                const row = document.createElement('tr');
+                if (f.remediation_status === 'SELECTED') {
+                    row.className = 'table-active';
+                }
+                
+                row.innerHTML = `
+                    <td><strong>${idx + 1}</strong></td>
+                    <td><code>${f.finding_id}</code></td>
+                    <td>${f.target}</td>
+                    <td><span class="badge bg-secondary">${f.port}/${f.service}</span></td>
+                    <td><strong>${f.vulnerability}</strong><br><small class="text-secondary">${f.version}</small></td>
+                    <td><span class="text-warning font-monospace">${f.cvss}</span></td>
+                    <td><strong class="text-info fs-5">${f.business_risk}</strong></td>
+                    <td><span class="badge badge-${f.severity} px-2 py-1">${f.severity}</span></td>
+                    <td><strong class="text-light font-monospace">${f.remediation_effort} hrs</strong></td>
+                    <td><small class="text-light">${f.remediation_action}</small></td>
+                    <td><span class="badge badge-${f.remediation_status} px-2 py-1">${f.remediation_status === 'SELECTED' ? 'SELECTED IN SPRINT' : 'DEFERRED TO NEXT SPRINT'}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
     </script>
 </body>
 </html>

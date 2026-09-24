@@ -4,7 +4,7 @@ from typing import List
 from app.guardrail.validator import is_authorized_lab_target
 from app.models.finding import VulnerabilityFinding
 
-# Vulnerability signature database for common lab services (e.g. Metasploitable / DVWA / standard ports)
+# Vulnerability signature database for common lab services with remediation attributes
 KNOWN_LAB_PORT_SIGNATURES = {
     21: {
         "service": "ftp",
@@ -12,7 +12,9 @@ KNOWN_LAB_PORT_SIGNATURES = {
         "vulnerability": "vsftpd 2.3.4 Backdoor Command Execution",
         "cvss": 9.8,
         "exploitability": 9.5,
-        "evidence": "FTP Banner: 220 (vsFTPd 2.3.4)"
+        "evidence": "FTP Banner: 220 (vsFTPd 2.3.4)",
+        "remediation_effort": 3.0,
+        "remediation_action": "Disable vsftpd service or update to non-backdoored vsftpd version >=3.0.5"
     },
     22: {
         "service": "ssh",
@@ -20,7 +22,9 @@ KNOWN_LAB_PORT_SIGNATURES = {
         "vulnerability": "OpenSSH Weak Cipher Support & User Enumeration",
         "cvss": 5.3,
         "exploitability": 4.0,
-        "evidence": "SSH Banner: SSH-2.0-OpenSSH_4.7p1 Debian-8ubuntu1"
+        "evidence": "SSH Banner: SSH-2.0-OpenSSH_4.7p1 Debian-8ubuntu1",
+        "remediation_effort": 2.0,
+        "remediation_action": "Disable SSH root login and restrict weak MAC/Cipher algorithms in sshd_config"
     },
     80: {
         "service": "http",
@@ -28,7 +32,9 @@ KNOWN_LAB_PORT_SIGNATURES = {
         "vulnerability": "Outdated Apache httpd Server with RCE Exploit Availability",
         "cvss": 7.5,
         "exploitability": 8.0,
-        "evidence": "HTTP Response Header: Server: Apache/2.4.18 (Ubuntu)"
+        "evidence": "HTTP Response Header: Server: Apache/2.4.18 (Ubuntu)",
+        "remediation_effort": 6.0,
+        "remediation_action": "Upgrade Apache httpd to >=2.4.58 and sanitize web application inputs"
     },
     3306: {
         "service": "mysql",
@@ -36,7 +42,9 @@ KNOWN_LAB_PORT_SIGNATURES = {
         "vulnerability": "Unauthenticated Remote MySQL Root Access / Weak Password",
         "cvss": 8.5,
         "exploitability": 9.0,
-        "evidence": "MySQL Banner: 5.0.51a-3ubuntu5"
+        "evidence": "MySQL Banner: 5.0.51a-3ubuntu5",
+        "remediation_effort": 4.0,
+        "remediation_action": "Enforce strong MySQL root authentication and bind listening IP to localhost"
     },
     5432: {
         "service": "postgresql",
@@ -44,7 +52,9 @@ KNOWN_LAB_PORT_SIGNATURES = {
         "vulnerability": "PostgreSQL Command Execution Vulnerability",
         "cvss": 8.0,
         "exploitability": 7.5,
-        "evidence": "PostgreSQL Server Connection Established on 5432"
+        "evidence": "PostgreSQL Server Connection Established on 5432",
+        "remediation_effort": 5.0,
+        "remediation_action": "Configure pg_hba.conf to enforce scram-sha-256 password authentication"
     }
 }
 
@@ -73,7 +83,10 @@ class LabScanner:
                     exploitability=info["exploitability"],
                     asset_criticality=asset_criticality,
                     exposure=exposure,
-                    evidence=info["evidence"]
+                    evidence=info["evidence"],
+                    remediation_effort=info["remediation_effort"],
+                    remediation_action=info["remediation_action"],
+                    remediation_status="PENDING"
                 )
             )
         return findings
@@ -113,7 +126,9 @@ class LabScanner:
                         "vulnerability": f"Open port {port} exposed on lab target",
                         "cvss": 5.0,
                         "exploitability": 5.0,
-                        "evidence": banner or f"TCP port {port} open"
+                        "evidence": banner or f"TCP port {port} open",
+                        "remediation_effort": 4.0,
+                        "remediation_action": f"Apply security patch and firewall rule for port {port}"
                     })
 
                     findings.append(
@@ -128,7 +143,10 @@ class LabScanner:
                             exploitability=info["exploitability"],
                             asset_criticality=asset_criticality,
                             exposure=exposure,
-                            evidence=banner or info["evidence"]
+                            evidence=banner or info["evidence"],
+                            remediation_effort=info["remediation_effort"],
+                            remediation_action=info["remediation_action"],
+                            remediation_status="PENDING"
                         )
                     )
             except Exception:
