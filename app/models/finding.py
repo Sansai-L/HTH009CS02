@@ -16,7 +16,7 @@ class VulnerabilityFinding(BaseModel):
     severity: Optional[str] = Field(default="INFO", description="Calculated Severity: CRITICAL, HIGH, MEDIUM, LOW, INFO")
     evidence: str = Field(..., description="Evidence/banner output captured during scan")
     
-    # Sprint 2 Remediation Attributes
+    # Sprint 2 & 3 Remediation Attributes
     remediation_effort: float = Field(default=4.0, description="Estimated remediation effort in hours")
     remediation_action: Optional[str] = Field(default="Apply security patch and update service version", description="Recommended remediation action")
     remediation_status: Optional[str] = Field(default="PENDING", description="Remediation status: SELECTED, DEFERRED, PENDING")
@@ -27,6 +27,7 @@ class ScanRequest(BaseModel):
     exposure: float = Field(default=0.5, description="Exposure Factor (0.1 - 1.0)")
 
 class PlanRequest(BaseModel):
+    scan_id: Optional[str] = Field(default=None, description="Optional scan_id to generate plan from")
     target: Optional[str] = Field(default="192.168.1.10", description="Target IP or hostname")
     asset_criticality: float = Field(default=5.0, description="Asset Criticality (1.0 - 10.0)")
     exposure: float = Field(default=0.5, description="Exposure Factor (0.1 - 1.0)")
@@ -34,6 +35,8 @@ class PlanRequest(BaseModel):
     findings: Optional[List[VulnerabilityFinding]] = Field(default=None, description="Optional custom findings list")
 
 class RemediationPlan(BaseModel):
+    plan_id: Optional[str] = Field(default=None, description="Persisted plan UUID")
+    scan_id: Optional[str] = Field(default=None, description="Persisted scan UUID")
     available_capacity: float = Field(..., description="Total available capacity in hours")
     total_effort_used: float = Field(..., description="Total hours used by selected remediations")
     remaining_capacity: float = Field(..., description="Remaining unused capacity in hours")

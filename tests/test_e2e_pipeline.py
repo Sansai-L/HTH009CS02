@@ -1,7 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
+from app.db.database import init_db
 
+init_db()
 client = TestClient(app)
 
 def test_health_check_endpoint():
@@ -26,12 +28,13 @@ def test_scan_authorized_lab_target_pipeline():
         "exposure": 1.0
     }
     response = client.post("/api/scan", json=payload)
+    if response.status_code != 200:
+        print("ERROR DETAIL:", response.json())
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "success"
     assert data["total_findings"] > 0
     
-    # Assert findings are correctly sorted descending by business_risk
     findings = data["findings"]
     for i in range(len(findings) - 1):
         assert findings[i]["business_risk"] >= findings[i+1]["business_risk"]

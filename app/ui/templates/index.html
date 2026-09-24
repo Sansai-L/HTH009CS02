@@ -25,15 +25,19 @@
         <header class="mb-4 pb-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="hero-title h2 mb-1">HTH-CS-03: Risk Scanner & Remediation Planner</h1>
-                <p class="text-secondary mb-0">Sprint 2 — Business-Risk Ranking + 0/1 Knapsack Remediation Optimization</p>
+                <p class="text-secondary mb-0">Sprint 3 — Integrated SQLite Persistence, Risk Engine & 0/1 Knapsack Optimization</p>
             </div>
-            <span class="badge bg-primary px-3 py-2 fs-6">Sprint 2 Core Active</span>
+            <div class="d-flex align-items-center gap-2">
+                <span id="dbStatusBadge" class="badge bg-success px-3 py-2 fs-6">SQLite Persisted</span>
+                <span class="badge bg-primary px-3 py-2 fs-6">Sprint 3 Active</span>
+            </div>
         </header>
 
         <!-- Target Scan & Capacity Configuration Form -->
         <div class="card mb-4 shadow">
-            <div class="card-header border-secondary fw-semibold">
-                🛡️ Target Configuration & Remediation Capacity Planner
+            <div class="card-header border-secondary fw-semibold d-flex justify-content-between align-items-center">
+                <span>🛡️ Target Configuration & Remediation Capacity Planner</span>
+                <small id="lastSavedPlanText" class="text-info font-monospace"></small>
             </div>
             <div class="card-body">
                 <form id="scanForm" class="row g-3">
@@ -64,7 +68,7 @@
             </div>
         </div>
 
-        <!-- Remediation Plan Metrics Dashboard (Initially Hidden) -->
+        <!-- Remediation Plan Metrics Dashboard -->
         <div id="planSummary" class="row g-3 mb-4 d-none">
             <div class="col-md-2.4 col-sm-6">
                 <div class="card p-3 metric-card text-center">
@@ -149,51 +153,104 @@
             <h6 class="text-info mb-2">💡 Capacity-Constrained Remediation Optimizer (0/1 Knapsack):</h6>
             <p class="small text-secondary mb-0">
                 The optimization engine uses dynamic programming to solve <code>Maximize Sum(Business Risk) subject to Sum(Remediation Effort) <= Available Capacity</code>.
-                Unlike naive top-N sorting, this guarantees the <strong>maximum possible risk reduction</strong> for any given weekly team bandwidth.
+                All scans, findings, and remediation plans are automatically persisted in SQLite and survive browser refreshes.
             </p>
         </div>
     </div>
 
     <script>
+        let currentScanId = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadLatestPersistedPlan();
+        });
+
         document.getElementById('scanForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             await executeScanAndPlan();
         });
 
+        async function loadLatestPersistedPlan() {
+            try {
+                const res = await fetch('/api/plan/latest');
+                const data = await res.json();
+
+                if (res.ok && data.status === 'success') {
+                    const statusAlert = document.getElementById('statusAlert');
+                    statusAlert.className = 'alert alert-info shadow-sm mb-4 d-block';
+                    statusAlert.innerText = `Loaded latest persisted plan from SQLite (Plan ID: ${data.plan_id}). Survives browser refresh!`;
+                    
+                    document.getElementById('target').value = data.target || '192.168.1.10';
+                    document.getElementById('available_capacity').value = data.available_capacity;
+                    document.getElementById('lastSavedPlanText').innerText = `Plan ID: ${data.plan_id.substring(0,8)}...`;
+                    document.getElementById('btnGeneratePlan').classList.remove('d-none');
+                    currentScanId = data.scan_id;
+
+                    renderPlanResults(data);
+                }
+            } catch (err) {
+                console.log("No previous plan found:", err);
+            }
+        }
+
         async function executeScanAndPlan() {
             const statusAlert = document.getElementById('statusAlert');
-            const tbody = document.getElementById('findingsTableBody');
-            
             statusAlert.className = 'alert alert-warning shadow-sm mb-4 d-block';
-            statusAlert.innerText = 'Scanning target & executing 0/1 Knapsack Remediation Optimization...';
+            statusAlert.innerText = 'Scanning target, scoring BRS & persisting to SQLite database...';
 
-            const payload = {
+            const scanPayload = {
                 target: document.getElementById('target').value,
                 asset_criticality: parseFloat(document.getElementById('asset_criticality').value),
-                exposure: parseFloat(document.getElementById('exposure').value),
-                available_capacity: parseFloat(document.getElementById('available_capacity').value)
+                exposure: parseFloat(document.getElementById('exposure').value)
             };
 
             try {
-                const response = await fetch('/api/plan', {
+                // Step 1: Execute Scan & Save to DB
+                const scanRes = await fetch('/api/scan', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(scanPayload)
                 });
                 
-                const data = await response.json();
-
-                if (!response.ok) {
+                const scanData = await scanRes.json();
+                if (!scanRes.ok) {
                     statusAlert.className = 'alert alert-danger shadow-sm mb-4 d-block';
-                    statusAlert.innerText = `Error: ${data.detail || 'Plan generation failed'}`;
+                    statusAlert.innerText = `Scan Error: ${scanData.detail || 'Scan failed'}`;
+                    return;
+                }
+
+                currentScanId = scanData.scan_id;
+
+                // Step 2: Execute Remediation Plan Optimization & Persist to DB
+                const planPayload = {
+                    scan_id: currentScanId,
+                    target: scanPayload.target,
+                    asset_criticality: scanPayload.asset_criticality,
+                    exposure: scanPayload.exposure,
+                    available_capacity: parseFloat(document.getElementById('available_capacity').value)
+                };
+
+                const planRes = await fetch('/api/plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(planPayload)
+                });
+
+                const planData = await planRes.json();
+
+                if (!planRes.ok) {
+                    statusAlert.className = 'alert alert-danger shadow-sm mb-4 d-block';
+                    statusAlert.innerText = `Plan Error: ${planData.detail || 'Plan generation failed'}`;
                     return;
                 }
 
                 statusAlert.className = 'alert alert-success shadow-sm mb-4 d-block';
-                statusAlert.innerText = `Optimization Complete! Selected ${data.selected_count} remediations using ${data.total_effort_used} hrs of capacity. BRS Addressed: ${data.total_risk_reduced} (${data.risk_reduction_percentage}%).`;
+                statusAlert.innerText = `Scan & Optimization Persisted to SQLite! Selected ${planData.selected_count} remediations using ${planData.total_effort_used} hrs. BRS Addressed: ${planData.total_risk_reduced} (${planData.risk_reduction_percentage}%).`;
                 
                 document.getElementById('btnGeneratePlan').classList.remove('d-none');
-                renderPlanResults(data);
+                document.getElementById('lastSavedPlanText').innerText = `Plan ID: ${planData.plan_id.substring(0,8)}...`;
+
+                renderPlanResults(planData);
 
             } catch (err) {
                 statusAlert.className = 'alert alert-danger shadow-sm mb-4 d-block';
