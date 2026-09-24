@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTH-CS-03 | Business-Risk-Ranked Vulnerability Scanner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { background-color: #1e293b; border: 1px solid #334155; color: #f8fafc; }
+        .badge-CRITICAL { background-color: #ef4444; color: #ffffff; }
+        .badge-HIGH { background-color: #f97316; color: #ffffff; }
+        .badge-MEDIUM { background-color: #eab308; color: #000000; }
+        .badge-LOW { background-color: #3b82f6; color: #ffffff; }
+        .table-dark { background-color: #1e293b; --bs-table-bg: #1e293b; }
+        .hero-title { font-weight: 700; background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    </style>
+</head>
+<body class="p-4">
+    <div class="container-fluid">
+        <header class="mb-4 pb-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="hero-title h2 mb-1">HTH-CS-03: Business-Risk Vulnerability Scanner</h1>
+                <p class="text-secondary mb-0">Phase 1 Vertical Slice — Business-Context Risk Ranking Engine</p>
+            </div>
+            <span class="badge bg-success px-3 py-2 fs-6">Phase 1 Active</span>
+        </header>
+
+        <!-- Target Scan Configuration Form -->
+        <div class="card mb-4 shadow">
+            <div class="card-header border-secondary fw-semibold">
+                🛡️ Authorized Lab Target Scanner & Business Risk Configurator
+            </div>
+            <div class="card-body">
+                <form id="scanForm" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="target" class="form-label text-light">Target IP / Hostname (Lab Environment Only)</label>
+                        <input type="text" class="form-control bg-dark text-light border-secondary" id="target" value="192.168.1.10" required>
+                        <div class="form-text text-secondary">Only private subnets (e.g. 192.168.x.x, 10.x.x.x, 127.0.0.1) permitted.</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="asset_criticality" class="form-label text-light">Asset Criticality (1.0 - 10.0)</label>
+                        <input type="number" step="0.5" min="1.0" max="10.0" class="form-control bg-dark text-light border-secondary" id="asset_criticality" value="10.0">
+                        <div class="form-text text-secondary">10 = Core DB / Payment System; 2 = Dev Box</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="exposure" class="form-label text-light">Exposure Factor (0.1 - 1.0)</label>
+                        <input type="number" step="0.1" min="0.1" max="1.0" class="form-control bg-dark text-light border-secondary" id="exposure" value="1.0">
+                        <div class="form-text text-secondary">1.0 = Internet-facing; 0.1 = Isolated Air-gapped</div>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">RUN SCAN</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Status & Guardrail Message -->
+        <div id="statusAlert" class="alert alert-info d-none shadow-sm mb-4" role="alert"></div>
+
+        <!-- Ranked Findings Results Table -->
+        <div class="card shadow">
+            <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">📊 Ranked Vulnerability Findings (Sorted by Business Risk Score, NOT Raw CVSS)</span>
+                <span id="findingCount" class="badge bg-secondary">0 Findings</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0 align-middle">
+                        <thead>
+                            <tr class="border-secondary text-secondary">
+                                <th>#</th>
+                                <th>Finding ID</th>
+                                <th>Target</th>
+                                <th>Port / Service</th>
+                                <th>Vulnerability</th>
+                                <th>Raw CVSS</th>
+                                <th>Exploitability</th>
+                                <th>Criticality</th>
+                                <th>Exposure</th>
+                                <th>Business Risk (BRS)</th>
+                                <th>Severity</th>
+                            </tr>
+                        </thead>
+                        <tbody id="findingsTableBody">
+                            <tr>
+                                <td colspan="11" class="text-center py-4 text-secondary">No scan executed yet. Submit target configuration above to begin.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Methodology Callout Footer -->
+        <div class="mt-4 p-3 card bg-dark border-secondary">
+            <h6 class="text-info mb-2">💡 Business Risk Scoring Methodology:</h6>
+            <p class="small text-secondary mb-0">
+                <strong>Formula:</strong> <code>Business Risk Score (BRS) = Exploitability × Asset Criticality × Exposure</code><br>
+                Notice how high CVSS vulnerabilities on low-criticality/low-exposure hosts rank LOWER than medium CVSS vulnerabilities on critical, exposed production assets.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('scanForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusAlert = document.getElementById('statusAlert');
+            const tbody = document.getElementById('findingsTableBody');
+            
+            statusAlert.className = 'alert alert-warning shadow-sm mb-4 d-block';
+            statusAlert.innerText = 'Executing scan & computing Business Risk Scores...';
+
+            const payload = {
+                target: document.getElementById('target').value,
+                asset_criticality: parseFloat(document.getElementById('asset_criticality').value),
+                exposure: parseFloat(document.getElementById('exposure').value)
+            };
+
+            try {
+                const response = await fetch('/api/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+
+                if (!response.ok) {
+                    statusAlert.className = 'alert alert-danger shadow-sm mb-4 d-block';
+                    statusAlert.innerText = `Error: ${data.detail || 'Scan failed'}`;
+                    return;
+                }
+
+                statusAlert.className = 'alert alert-success shadow-sm mb-4 d-block';
+                statusAlert.innerText = `Scan Successful! Guardrail verified target. Computed business risk for ${data.total_findings} findings.`;
+                document.getElementById('findingCount').innerText = `${data.total_findings} Findings`;
+
+                tbody.innerHTML = '';
+                data.findings.forEach((f, idx) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><strong>${idx + 1}</strong></td>
+                        <td><code>${f.finding_id}</code></td>
+                        <td>${f.target}</td>
+                        <td><span class="badge bg-secondary">${f.port}/${f.service}</span></td>
+                        <td><strong>${f.vulnerability}</strong><br><small class="text-secondary">${f.version}</small></td>
+                        <td><span class="text-warning font-monospace">${f.cvss}</span></td>
+                        <td>${f.exploitability}</td>
+                        <td>${f.asset_criticality}</td>
+                        <td>${f.exposure}</td>
+                        <td><strong class="text-info fs-5">${f.business_risk}</strong></td>
+                        <td><span class="badge badge-${f.severity} px-2 py-1">${f.severity}</span></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+            } catch (err) {
+                statusAlert.className = 'alert alert-danger shadow-sm mb-4 d-block';
+                statusAlert.innerText = `Connection Error: ${err.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
