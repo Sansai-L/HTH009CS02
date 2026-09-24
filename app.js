@@ -578,8 +578,28 @@ document.getElementById('startScan').addEventListener('click', async () => {
     logEntry(step.msg, step.type);
   }
 
+  // ── CALL FASTAPI SCANNING PIPELINE (/api/scan) ────────
+  let backendFindings = null;
+  try {
+    logEntry(`📡 Querying FastAPI Scanning Pipeline: POST /api/scan (target: ${ip})…`, 'info');
+    const apiRes = await fetch('/api/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetIP: ip })
+    });
+    if (apiRes.ok) {
+      const data = await apiRes.json();
+      if (Array.isArray(data) && data.length > 0) {
+        backendFindings = data;
+        logEntry(`✓ Pipeline Connected: Ingested ${data.length} findings from backend scanner`, 'ok');
+      }
+    }
+  } catch (err) {
+    logEntry(`ℹ️ Standalone mode: Using local target vulnerability profiles (${err.message})`, 'info');
+  }
+
   // Build findings with MITRE ATT&CK enrichment + KEV override
-  state.findings = buildFindings(criticality, exposure, labType, useKEV, useMitre);
+  state.findings = buildFindings(criticality, exposure, labType, useKEV, useMitre, backendFindings);
   document.getElementById('kevMatched').textContent = state.kev.matchedIds.size;
 
   await sleep(300);
@@ -603,9 +623,9 @@ document.getElementById('startScan').addEventListener('click', async () => {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-function buildFindings(criticality, exposure, labType, useKEV, useMitre = true) {
-  let pool = [...VULN_DB];
-  if (labType === 'dvwa') pool = pool.filter(v => [80,443,3306].includes(v.port) || Math.random() > 0.5);
+function buildFindings(criticality, exposure, labType, useKEV, useMitre = true, customPool = null) {
+  let pool = (Array.isArray(customPool) && customPool.length > 0) ? [...customPool] : [...VULN_DB];
+  if (!customPool && labType === 'dvwa') pool = pool.filter(v => [80,443,3306].includes(v.port) || Math.random() > 0.5);
 
   return pool
     .map(v => {
