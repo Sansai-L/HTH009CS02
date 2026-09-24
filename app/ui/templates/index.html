@@ -36,7 +36,6 @@
             <div class="d-flex align-items-center gap-2">
                 <span id="threatIntelBadge" class="badge bg-purple bg-gradient px-3 py-2 fs-6 interactive-badge" style="background-color: #8b5cf6;" data-bs-toggle="modal" data-bs-target="#threatIntelModal" onclick="openThreatIntelModal()">CISA KEV + EPSS Enriched</span>
                 <span id="dbStatusBadge" class="badge bg-success px-3 py-2 fs-6 interactive-badge" data-bs-toggle="modal" data-bs-target="#sqliteModal" onclick="openSqliteModal()">SQLite Persisted</span>
-                <span id="sprint4Badge" class="badge bg-primary px-3 py-2 fs-6 interactive-badge" data-bs-toggle="modal" data-bs-target="#sprint4Modal" onclick="openSprint4Modal()">Sprint 4 Active</span>
             </div>
         </header>
 
@@ -44,7 +43,6 @@
         <div class="card mb-4 shadow">
             <div class="card-header border-secondary fw-semibold d-flex justify-content-between align-items-center">
                 <span>🛡️ Target Configuration & Remediation Capacity Planner</span>
-                <small id="lastSavedPlanText" class="text-info font-monospace"></small>
             </div>
             <div class="card-body">
                 <form id="scanForm" class="row g-3">
@@ -461,7 +459,7 @@
                     
                     document.getElementById('target').value = data.target || '192.168.1.10';
                     document.getElementById('available_capacity').value = data.available_capacity;
-                    document.getElementById('lastSavedPlanText').innerText = `Plan ID: ${data.plan_id.substring(0,8)}...`;
+
                     document.getElementById('btnGeneratePlan').classList.remove('d-none');
                     currentScanId = data.scan_id;
 
@@ -528,7 +526,7 @@
                 statusAlert.innerText = `Scan & Threat Intel Enriched! Selected ${planData.selected_count} remediations using ${planData.total_effort_used} hrs. BRS Addressed: ${planData.total_risk_reduced} (${planData.risk_reduction_percentage}%).`;
                 
                 document.getElementById('btnGeneratePlan').classList.remove('d-none');
-                document.getElementById('lastSavedPlanText').innerText = `Plan ID: ${planData.plan_id.substring(0,8)}...`;
+
 
                 renderPlanResults(planData);
 
