@@ -545,8 +545,50 @@
             }
         }
 
+        async function reoptimizePlanOnly() {
+            if (!currentScanId) {
+                await executeScanAndPlan();
+                return;
+            }
+
+            const statusAlert = document.getElementById('statusAlert');
+            statusAlert.className = 'alert alert-warning shadow-sm mb-4 d-block';
+            statusAlert.innerText = 'Re-optimizing remediation plan with updated capacity...';
+
+            const planPayload = {
+                scan_id: currentScanId,
+                target: document.getElementById('target').value,
+                asset_criticality: parseFloat(document.getElementById('asset_criticality').value),
+                exposure: parseFloat(document.getElementById('exposure').value),
+                available_capacity: parseFloat(document.getElementById('available_capacity').value)
+            };
+
+            try {
+                const planRes = await fetch('/api/plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(planPayload)
+                });
+
+                const planData = await planRes.json();
+                if (!planRes.ok) {
+                    statusAlert.className = 'alert alert-danger shadow-sm mb-4 d-block';
+                    statusAlert.innerText = `Plan Error: ${planData.detail || 'Plan optimization failed'}`;
+                    return;
+                }
+
+                statusAlert.className = 'alert alert-success shadow-sm mb-4 d-block';
+                statusAlert.innerText = `Sprint Plan Re-Optimized! Selected ${planData.selected_count} remediations using ${planData.total_effort_used} hrs. BRS Addressed: ${planData.total_risk_reduced} (${planData.risk_reduction_percentage}%).`;
+
+                renderPlanResults(planData);
+            } catch (err) {
+                statusAlert.className = 'alert alert-danger shadow-sm mb-4 d-block';
+                statusAlert.innerText = `Connection Error: ${err.message}`;
+            }
+        }
+
         function triggerPlanGeneration() {
-            executeScanAndPlan();
+            reoptimizePlanOnly();
         }
 
         function renderPlanResults(data) {
