@@ -26,7 +26,7 @@ def render_dashboard(request: Request):
     """
     Renders the basic functional interface for Phase 1.
     """
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html")
 
 @app.get("/api/health")
 def health_check():
