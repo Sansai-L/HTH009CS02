@@ -442,7 +442,9 @@ def resolve_target_findings(clean_target: str, open_ports: List[int], lab_type: 
 
     # Scenario A: Live ports detected on a real responsive network host
     # (Exclude false-positive blackhole routers that SYN-ACK all ports indiscriminately)
-    if open_ports and len(open_ports) < len(PROBE_PORTS) and not (open_ports == [80, 443] and ("10." in clean_target or "172." in clean_target or "192." in clean_target)):
+    # Use set comparison: asyncio.gather() returns results in creation order, not completion order,
+    # so the list is ordered, but we use set to be safe against any future re-ordering.
+    if open_ports and len(open_ports) < len(PROBE_PORTS) and not (set(open_ports) == {80, 443} and ("10." in clean_target or "172." in clean_target or "192." in clean_target)):
         print(f"[PIPELINE] Live responsive host detected: {clean_target} with open ports: {open_ports}")
         return generate_findings_for_ports(open_ports)
 
@@ -629,10 +631,10 @@ if os.path.isdir(STATIC_DIR):
 if __name__ == "__main__":
     import uvicorn
     print("\n" + "="*60)
-    print("🛡️  VulnRankPro Scanning Engine & FastAPI Backend")
+    print("[*] VulnRankPro Scanning Engine & FastAPI Backend")
     print("="*60)
-    print("📡 Local Server: http://localhost:8000")
-    print("📚 API Docs:     http://localhost:8000/docs")
-    print(f"📁 Static Files: {STATIC_DIR}")
+    print("[*] Local Server: http://localhost:8000")
+    print("[*] API Docs:     http://localhost:8000/docs")
+    print(f"[*] Static Files: {STATIC_DIR}")
     print("="*60 + "\n")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
