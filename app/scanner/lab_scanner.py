@@ -4,9 +4,10 @@ from typing import List
 from app.guardrail.validator import is_authorized_lab_target
 from app.models.finding import VulnerabilityFinding
 
-# Vulnerability signature database for common lab services with 8 test vulnerability signatures
+# Vulnerability signature database for common lab services with real CVE mappings & remediation attributes
 KNOWN_LAB_PORT_SIGNATURES = {
     21: {
+        "cve_id": "CVE-2011-2523",
         "service": "ftp",
         "version": "vsftpd 2.3.4",
         "vulnerability": "vsftpd 2.3.4 Backdoor Command Execution",
@@ -17,6 +18,7 @@ KNOWN_LAB_PORT_SIGNATURES = {
         "remediation_action": "Disable vsftpd service or update to non-backdoored vsftpd version >=3.0.5"
     },
     22: {
+        "cve_id": "CVE-2008-0166",
         "service": "ssh",
         "version": "OpenSSH 4.7p1",
         "vulnerability": "OpenSSH Weak Cipher Support & User Enumeration",
@@ -27,9 +29,10 @@ KNOWN_LAB_PORT_SIGNATURES = {
         "remediation_action": "Disable SSH root login and restrict weak MAC/Cipher algorithms in sshd_config"
     },
     80: {
+        "cve_id": "CVE-2021-41773",
         "service": "http",
         "version": "Apache httpd 2.4.18 (DVWA / Metasploitable Web)",
-        "vulnerability": "Outdated Apache httpd Server with RCE Exploit Availability",
+        "vulnerability": "Outdated Apache httpd Server with Path Traversal & RCE",
         "cvss": 7.5,
         "exploitability": 8.0,
         "evidence": "HTTP Response Header: Server: Apache/2.4.18 (Ubuntu)",
@@ -37,6 +40,7 @@ KNOWN_LAB_PORT_SIGNATURES = {
         "remediation_action": "Upgrade Apache httpd to >=2.4.58 and sanitize web application inputs"
     },
     445: {
+        "cve_id": "CVE-2007-2447",
         "service": "smb",
         "version": "Samba 3.0.20",
         "vulnerability": "Samba username map script Command Execution",
@@ -47,9 +51,10 @@ KNOWN_LAB_PORT_SIGNATURES = {
         "remediation_action": "Upgrade Samba to >=4.15 and disable SMBv1 protocol"
     },
     3306: {
+        "cve_id": "CVE-2012-2122",
         "service": "mysql",
         "version": "MySQL 5.0.51a-3ubuntu5",
-        "vulnerability": "Unauthenticated Remote MySQL Root Access / Weak Password",
+        "vulnerability": "Unauthenticated Remote MySQL Password Bypass / Root Access",
         "cvss": 8.5,
         "exploitability": 9.0,
         "evidence": "MySQL Banner: 5.0.51a-3ubuntu5",
@@ -57,6 +62,7 @@ KNOWN_LAB_PORT_SIGNATURES = {
         "remediation_action": "Enforce strong MySQL root authentication and bind listening IP to localhost"
     },
     5432: {
+        "cve_id": "CVE-2013-1899",
         "service": "postgresql",
         "version": "PostgreSQL 8.3.1",
         "vulnerability": "PostgreSQL Command Execution Vulnerability",
@@ -67,9 +73,10 @@ KNOWN_LAB_PORT_SIGNATURES = {
         "remediation_action": "Configure pg_hba.conf to enforce scram-sha-256 password authentication"
     },
     6379: {
+        "cve_id": "CVE-2022-0543",
         "service": "redis",
         "version": "Redis 4.0.1",
-        "vulnerability": "Unauthenticated Redis Remote Command Execution & Key Injection",
+        "vulnerability": "Unauthenticated Redis Lua Sandbox Escape & Remote Code Execution",
         "cvss": 8.8,
         "exploitability": 8.5,
         "evidence": "Redis Protocol: +PONG Server version 4.0.1",
@@ -77,9 +84,10 @@ KNOWN_LAB_PORT_SIGNATURES = {
         "remediation_action": "Enable Redis requirepass authentication and bind interface to 127.0.0.1"
     },
     8080: {
+        "cve_id": "CVE-2017-5638",
         "service": "http-alt",
         "version": "Apache Tomcat 8.5.19",
-        "vulnerability": "Unauthenticated Remote Code Execution in Apache Tomcat",
+        "vulnerability": "Unauthenticated Remote Code Execution in Apache Tomcat / Struts",
         "cvss": 9.8,
         "exploitability": 9.0,
         "evidence": "HTTP Response Header: Server: Apache-Coyote/1.1 (Tomcat 8.5.19)",
@@ -104,6 +112,7 @@ class LabScanner:
             findings.append(
                 VulnerabilityFinding(
                     finding_id=f"VULN-{uuid.uuid4().hex[:6].upper()}",
+                    cve_id=info["cve_id"],
                     target=target,
                     port=port,
                     service=info["service"],
@@ -151,6 +160,7 @@ class LabScanner:
                     s.close()
 
                     info = KNOWN_LAB_PORT_SIGNATURES.get(port, {
+                        "cve_id": f"CVE-2024-{port}00",
                         "service": "unknown",
                         "version": "Unknown",
                         "vulnerability": f"Open port {port} exposed on lab target",
@@ -164,6 +174,7 @@ class LabScanner:
                     findings.append(
                         VulnerabilityFinding(
                             finding_id=f"VULN-{uuid.uuid4().hex[:6].upper()}",
+                            cve_id=info["cve_id"],
                             target=target,
                             port=port,
                             service=info["service"],

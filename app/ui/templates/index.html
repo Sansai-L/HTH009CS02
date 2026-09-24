@@ -14,10 +14,13 @@
         .badge-LOW { background-color: #3b82f6; color: #ffffff; }
         .badge-SELECTED { background-color: #10b981; color: #ffffff; }
         .badge-DEFERRED { background-color: #64748b; color: #ffffff; }
+        .badge-KEV { background-color: #dc2626; color: #ffffff; font-weight: bold; }
+        .badge-EPSS { background-color: #8b5cf6; color: #ffffff; }
         .table-dark { background-color: #1e293b; --bs-table-bg: #1e293b; }
         .hero-title { font-weight: 700; background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .metric-card { background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid #334155; }
         .rationale-box { background-color: #1e293b; border-left: 4px solid #38bdf8; }
+        .threat-intel-box { background-color: #1e293b; border-left: 4px solid #8b5cf6; }
     </style>
 </head>
 <body class="p-4">
@@ -25,11 +28,12 @@
         <header class="mb-4 pb-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="hero-title h2 mb-1">HTH-CS-03: Risk Scanner & Remediation Planner</h1>
-                <p class="text-secondary mb-0">Sprint 3 — Integrated SQLite Persistence, Risk Engine & 0/1 Knapsack Optimization</p>
+                <p class="text-secondary mb-0">Sprint 4 — Threat Intelligence Integration (CISA KEV + FIRST EPSS)</p>
             </div>
             <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-purple bg-gradient px-3 py-2 fs-6" style="background-color: #8b5cf6;">CISA KEV + EPSS Enriched</span>
                 <span id="dbStatusBadge" class="badge bg-success px-3 py-2 fs-6">SQLite Persisted</span>
-                <span class="badge bg-primary px-3 py-2 fs-6">Sprint 3 Active</span>
+                <span class="badge bg-primary px-3 py-2 fs-6">Sprint 4 Active</span>
             </div>
         </header>
 
@@ -109,13 +113,24 @@
             <p id="rationaleText" class="mb-0 text-light small"></p>
         </div>
 
+        <!-- Threat Intelligence Distinction Callout -->
+        <div class="card p-3 threat-intel-box mb-4 shadow-sm">
+            <h6 class="text-purple mb-1 fw-bold" style="color: #c084fc;">📡 Threat Intelligence Model Breakdown:</h6>
+            <div class="row small text-secondary">
+                <div class="col-md-3"><strong>CVSS</strong>: Technical Severity</div>
+                <div class="col-md-3"><strong>FIRST EPSS</strong>: Exploitation Likelihood (0-100%)</div>
+                <div class="col-md-3"><strong>CISA KEV</strong>: Active Exploitation in Wild</div>
+                <div class="col-md-3"><strong>Final BRS</strong>: Base BRS × Threat Multiplier</div>
+            </div>
+        </div>
+
         <!-- Status & Guardrail Message -->
         <div id="statusAlert" class="alert alert-info d-none shadow-sm mb-4" role="alert"></div>
 
         <!-- Ranked Findings & Remediation Plan Table -->
         <div class="card shadow">
             <div class="card-header border-secondary d-flex justify-content-between align-items-center">
-                <span class="fw-semibold">📊 Risk-Ranked Vulnerabilities & Capacity-Optimized Remediation Roadmap</span>
+                <span class="fw-semibold">📊 Risk-Ranked Vulnerabilities & Threat Intelligence Roadmap</span>
                 <button id="btnGeneratePlan" class="btn btn-sm btn-success fw-bold px-3 d-none" onclick="triggerPlanGeneration()">
                     ⚡ RE-OPTIMIZE SPRINT PLAN
                 </button>
@@ -126,21 +141,22 @@
                         <thead>
                             <tr class="border-secondary text-secondary">
                                 <th>#</th>
-                                <th>Finding ID</th>
-                                <th>Target</th>
+                                <th>CVE ID</th>
                                 <th>Port / Service</th>
                                 <th>Vulnerability</th>
-                                <th>Raw CVSS</th>
+                                <th>CVSS</th>
+                                <th>EPSS Prob (Pctl)</th>
+                                <th>CISA KEV</th>
+                                <th>Threat Mult</th>
                                 <th>Business Risk (BRS)</th>
                                 <th>Severity</th>
-                                <th>Effort (Hrs)</th>
-                                <th>Recommended Remediation Action</th>
+                                <th>Effort</th>
                                 <th>Sprint Status</th>
                             </tr>
                         </thead>
                         <tbody id="findingsTableBody">
                             <tr>
-                                <td colspan="11" class="text-center py-4 text-secondary">No scan executed yet. Submit target configuration above to begin.</td>
+                                <td colspan="12" class="text-center py-4 text-secondary">No scan executed yet. Submit target configuration above to begin.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -150,10 +166,10 @@
 
         <!-- Methodology Footer -->
         <div class="mt-4 p-3 card bg-dark border-secondary">
-            <h6 class="text-info mb-2">💡 Capacity-Constrained Remediation Optimizer (0/1 Knapsack):</h6>
+            <h6 class="text-info mb-2">💡 Threat-Intelligence-Enriched Remediation Planner:</h6>
             <p class="small text-secondary mb-0">
-                The optimization engine uses dynamic programming to solve <code>Maximize Sum(Business Risk) subject to Sum(Remediation Effort) <= Available Capacity</code>.
-                All scans, findings, and remediation plans are automatically persisted in SQLite and survive browser refreshes.
+                Formula: <code>Base BRS = Exploitability × Criticality × Exposure</code> | <code>Threat Multiplier = 1.0 + (EPSS × 0.5) + (0.5 if KEV)</code> | <code>Final BRS = Base BRS × Multiplier</code>.<br>
+                Knapsack Solver: <code>Maximize Sum(Final BRS) subject to Sum(Remediation Effort) <= Available Capacity</code>.
             </p>
         </div>
     </div>
@@ -196,12 +212,13 @@
         async function executeScanAndPlan() {
             const statusAlert = document.getElementById('statusAlert');
             statusAlert.className = 'alert alert-warning shadow-sm mb-4 d-block';
-            statusAlert.innerText = 'Scanning target, scoring BRS & persisting to SQLite database...';
+            statusAlert.innerText = 'Scanning target, enriching with CISA KEV & FIRST EPSS, scoring BRS & persisting to SQLite...';
 
             const scanPayload = {
                 target: document.getElementById('target').value,
                 asset_criticality: parseFloat(document.getElementById('asset_criticality').value),
-                exposure: parseFloat(document.getElementById('exposure').value)
+                exposure: parseFloat(document.getElementById('exposure').value),
+                enrich_threat_intel: true
             };
 
             try {
@@ -245,7 +262,7 @@
                 }
 
                 statusAlert.className = 'alert alert-success shadow-sm mb-4 d-block';
-                statusAlert.innerText = `Scan & Optimization Persisted to SQLite! Selected ${planData.selected_count} remediations using ${planData.total_effort_used} hrs. BRS Addressed: ${planData.total_risk_reduced} (${planData.risk_reduction_percentage}%).`;
+                statusAlert.innerText = `Scan & Threat Intel Enriched! Selected ${planData.selected_count} remediations using ${planData.total_effort_used} hrs. BRS Addressed: ${planData.total_risk_reduced} (${planData.risk_reduction_percentage}%).`;
                 
                 document.getElementById('btnGeneratePlan').classList.remove('d-none');
                 document.getElementById('lastSavedPlanText').innerText = `Plan ID: ${planData.plan_id.substring(0,8)}...`;
@@ -288,17 +305,33 @@
                     row.className = 'table-active';
                 }
                 
+                const cveDisplay = f.cve_id ? `<span class="badge bg-dark border border-secondary">${f.cve_id}</span>` : 'N/A';
+                
+                let epssDisplay = 'N/A';
+                if (f.epss_score !== null && f.epss_score !== undefined) {
+                    const probPct = (f.epss_score * 100).toFixed(1);
+                    const pctlPct = f.epss_percentile ? (f.epss_percentile * 100).toFixed(1) : 'N/A';
+                    epssDisplay = `<span class="badge badge-EPSS">${probPct}% (P${pctlPct}%)</span>`;
+                }
+
+                const kevDisplay = f.kev_known_exploited ? 
+                    `<span class="badge badge-KEV" title="CISA KEV Known Exploited Vulnerability">🔴 EXPLOITED</span>` : 
+                    `<span class="badge bg-secondary">NO</span>`;
+
+                const multDisplay = `<span class="badge bg-dark text-info border border-info">x${(f.threat_intel_multiplier || 1.0).toFixed(2)}</span>`;
+
                 row.innerHTML = `
                     <td><strong>${idx + 1}</strong></td>
-                    <td><code>${f.finding_id}</code></td>
-                    <td>${f.target}</td>
+                    <td>${cveDisplay}</td>
                     <td><span class="badge bg-secondary">${f.port}/${f.service}</span></td>
                     <td><strong>${f.vulnerability}</strong><br><small class="text-secondary">${f.version}</small></td>
                     <td><span class="text-warning font-monospace">${f.cvss}</span></td>
+                    <td>${epssDisplay}</td>
+                    <td>${kevDisplay}</td>
+                    <td>${multDisplay}</td>
                     <td><strong class="text-info fs-5">${f.business_risk}</strong></td>
                     <td><span class="badge badge-${f.severity} px-2 py-1">${f.severity}</span></td>
                     <td><strong class="text-light font-monospace">${f.remediation_effort} hrs</strong></td>
-                    <td><small class="text-light">${f.remediation_action}</small></td>
                     <td><span class="badge badge-${f.remediation_status} px-2 py-1">${f.remediation_status === 'SELECTED' ? 'SELECTED IN SPRINT' : 'DEFERRED TO NEXT SPRINT'}</span></td>
                 `;
                 tbody.appendChild(row);

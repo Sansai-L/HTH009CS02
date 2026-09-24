@@ -1,0 +1,53 @@
+{
+  "last_saved": 1790253786.3315792,
+  "epss_scores": {
+    "CVE-2022-0543": {
+      "cve_id": "CVE-2022-0543",
+      "epss_score": 0.9935,
+      "epss_percentile": 0.9994,
+      "timestamp": 1790253718.362005
+    },
+    "CVE-2021-41773": {
+      "cve_id": "CVE-2021-41773",
+      "epss_score": 0.9999,
+      "epss_percentile": 0.9999,
+      "timestamp": 1790253718.362005
+    },
+    "CVE-2017-5638": {
+      "cve_id": "CVE-2017-5638",
+      "epss_score": 1.0,
+      "epss_percentile": 0.9999,
+      "timestamp": 1790253718.362005
+    },
+    "CVE-2013-1899": {
+      "cve_id": "CVE-2013-1899",
+      "epss_score": 0.5431,
+      "epss_percentile": 0.9896,
+      "timestamp": 1790253718.362005
+    },
+    "CVE-2012-2122": {
+      "cve_id": "CVE-2012-2122",
+      "epss_score": 0.965,
+      "epss_percentile": 0.9988,
+      "timestamp": 1790253718.362005
+    },
+    "CVE-2011-2523": {
+      "cve_id": "CVE-2011-2523",
+      "epss_score": 0.9618,
+      "epss_percentile": 0.9988,
+      "timestamp": 1790253718.362005
+    },
+    "CVE-2008-0166": {
+      "cve_id": "CVE-2008-0166",
+      "epss_score": 0.7072,
+      "epss_percentile": 0.9937,
+      "timestamp": 1790253718.362005
+    },
+    "CVE-2007-2447": {
+      "cve_id": "CVE-2007-2447",
+      "epss_score": 0.4976,
+      "epss_percentile": 0.9884,
+      "timestamp": 1790253718.362005
+    }
+  }
+}

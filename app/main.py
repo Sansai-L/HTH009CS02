@@ -15,12 +15,14 @@ from app.risk_engine.scorer import BusinessRiskEngine
 from app.planner.optimizer import RemediationOptimizer
 from app.db.database import get_db, init_db
 from app.db.repository import DatabaseRepository
-from app.db.models import VulnerabilityFindingDB
+from app.threat_intel.service import ThreatIntelligenceService
+from app.threat_intel.kev import CisaKevClient
+from app.threat_intel.epss import FirstEpssClient
 
 app = FastAPI(
-    title="HTH-CS-03: Business-Risk-Ranked Vulnerability Scanner & Remediation Planner",
-    description="Sprint 3 — Integrated Database Persistence & Capacity Remediation Platform",
-    version="3.0.0"
+    title="HTH-CS-03: Business-Risk Vulnerability Scanner & Remediation Planner",
+    description="Sprint 4 — Threat Intelligence Integration (CISA KEV + FIRST EPSS)",
+    version="4.0.0"
 )
 
 # Initialize SQLite Database Tables on Module Load
@@ -41,15 +43,15 @@ def render_dashboard(request: Request):
 def health_check():
     return {
         "status": "ok",
-        "sprint": "3 - Full Integration & Persistence Active",
-        "version": "3.0.0"
+        "sprint": "4 - Threat Intelligence Active (CISA KEV + FIRST EPSS)",
+        "version": "4.0.0"
     }
 
 @app.post("/api/scan")
 def run_scan(request: ScanRequest, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
-    Scans an authorized lab target, normalizes findings, computes Business Risk Scores,
-    persists Asset, ScanJob, and Findings into SQLite database, and returns scan_id with findings.
+    Scans an authorized lab target, normalizes findings, enriches with CISA KEV & FIRST EPSS threat intel,
+    computes Business Risk Scores, persists records to SQLite, and returns scan results.
     """
     # 1. Target Authorization Guardrail Check
     is_auth, message = is_authorized_lab_target(request.target)
@@ -65,10 +67,16 @@ def run_scan(request: ScanRequest, db: Session = Depends(get_db)) -> Dict[str, A
             use_mock=True
         )
 
-        # 3. Calculate Business Risk Scores & Rank Findings
-        ranked_findings = BusinessRiskEngine.rank_findings(raw_findings)
+        # 3. Enrich Findings with Threat Intelligence (KEV + EPSS)
+        if request.enrich_threat_intel:
+            enriched_findings = ThreatIntelligenceService.enrich_findings(raw_findings)
+        else:
+            enriched_findings = raw_findings
 
-        # 4. Persist Asset, ScanJob & Findings to SQLite
+        # 4. Calculate Business Risk Scores & Rank Findings
+        ranked_findings = BusinessRiskEngine.rank_findings(enriched_findings)
+
+        # 5. Persist Asset, ScanJob & Findings to SQLite
         scan_job = DatabaseRepository.save_scan(
             db=db,
             target=request.target,
@@ -102,7 +110,8 @@ def generate_remediation_plan(request: PlanRequest, db: Session = Depends(get_db
         scan_id = request.scan_id
 
         if request.findings:
-            findings = [BusinessRiskEngine.calculate_risk(f) for f in request.findings]
+            enriched = ThreatIntelligenceService.enrich_findings(request.findings)
+            findings = [BusinessRiskEngine.calculate_risk(f) for f in enriched]
             ranked_findings = BusinessRiskEngine.rank_findings(findings)
         elif scan_id:
             scan_job = DatabaseRepository.get_scan_by_id(db, scan_id)
@@ -110,6 +119,7 @@ def generate_remediation_plan(request: PlanRequest, db: Session = Depends(get_db
                 ranked_findings = [
                     VulnerabilityFinding(
                         finding_id=f.finding_id,
+                        cve_id=f.cve_id,
                         target=f.target,
                         port=f.port,
                         service=f.service,
@@ -123,7 +133,15 @@ def generate_remediation_plan(request: PlanRequest, db: Session = Depends(get_db
                         severity=f.severity,
                         evidence=f.evidence,
                         remediation_effort=f.remediation_effort,
-                        remediation_action=f.remediation_action
+                        remediation_action=f.remediation_action,
+                        kev_known_exploited=f.kev_known_exploited,
+                        kev_date_added=f.kev_date_added,
+                        kev_due_date=f.kev_due_date,
+                        kev_required_action=f.kev_required_action,
+                        epss_score=f.epss_score,
+                        epss_percentile=f.epss_percentile,
+                        threat_intel_multiplier=f.threat_intel_multiplier,
+                        threat_intel_last_updated=f.threat_intel_last_updated
                     ) for f in scan_job.findings
                 ]
                 ranked_findings = BusinessRiskEngine.rank_findings(ranked_findings)
@@ -134,7 +152,8 @@ def generate_remediation_plan(request: PlanRequest, db: Session = Depends(get_db
                     exposure=request.exposure,
                     use_mock=True
                 )
-                ranked_findings = BusinessRiskEngine.rank_findings(raw_findings)
+                enriched = ThreatIntelligenceService.enrich_findings(raw_findings)
+                ranked_findings = BusinessRiskEngine.rank_findings(enriched)
         else:
             raw_findings = LabScanner.scan_target(
                 target=request.target or "192.168.1.10",
@@ -142,7 +161,8 @@ def generate_remediation_plan(request: PlanRequest, db: Session = Depends(get_db
                 exposure=request.exposure,
                 use_mock=True
             )
-            ranked_findings = BusinessRiskEngine.rank_findings(raw_findings)
+            enriched = ThreatIntelligenceService.enrich_findings(raw_findings)
+            ranked_findings = BusinessRiskEngine.rank_findings(enriched)
 
         # Optimize plan via 0/1 Knapsack
         plan = RemediationOptimizer.optimize_plan(
@@ -206,6 +226,45 @@ def get_latest_remediation_plan(db: Session = Depends(get_db)) -> Dict[str, Any]
         "deferred_vulnerabilities": [f.model_dump() for f in deferred],
         "optimization_rationale": plan_db.optimization_rationale
     }
+
+@app.get("/api/threat-intel/{cve}")
+def get_threat_intelligence(cve: str):
+    """
+    Retrieves CISA KEV status and FIRST EPSS probability score for a given CVE.
+    """
+    cve_clean = cve.strip().upper()
+    kev_data = CisaKevClient.lookup_cve(cve_clean)
+    epss_data = FirstEpssClient.lookup_epss(cve_clean)
+
+    return {
+        "cve_id": cve_clean,
+        "kev": {
+            "known_exploited": bool(kev_data),
+            "details": kev_data
+        },
+        "epss": epss_data or {"epss_score": None, "epss_percentile": None}
+    }
+
+@app.post("/api/threat-intel/refresh")
+def refresh_cisa_kev_catalog():
+    """
+    Forces refresh of the CISA KEV catalog cache.
+    """
+    try:
+        catalog = CisaKevClient.fetch_catalog(force_refresh=True)
+        return {"status": "success", "total_cisa_kev_entries": len(catalog)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to refresh KEV catalog: {str(e)}")
+
+@app.post("/api/findings/enrich")
+def enrich_findings_endpoint(findings: List[VulnerabilityFinding]) -> List[Dict[str, Any]]:
+    """
+    Enriches arbitrary vulnerability findings list with KEV and EPSS threat intelligence.
+    """
+    enriched = ThreatIntelligenceService.enrich_findings(findings)
+    scored = [BusinessRiskEngine.calculate_risk(f) for f in enriched]
+    ranked = BusinessRiskEngine.rank_findings(scored)
+    return [f.model_dump() for f in ranked]
 
 @app.get("/api/assets")
 def get_all_assets(db: Session = Depends(get_db)):

@@ -47,7 +47,7 @@ class DatabaseRepository:
             v_db = VulnerabilityFindingDB(
                 finding_id=f.finding_id,
                 scan_id=scan_job.scan_id,
-                cve_id=getattr(f, "cve_id", f.finding_id),
+                cve_id=f.cve_id or f.finding_id,
                 target=f.target,
                 port=f.port,
                 service=f.service,
@@ -61,7 +61,15 @@ class DatabaseRepository:
                 severity=f.severity or "INFO",
                 evidence=f.evidence,
                 remediation_effort=f.remediation_effort,
-                remediation_action=f.remediation_action
+                remediation_action=f.remediation_action,
+                kev_known_exploited=f.kev_known_exploited,
+                kev_date_added=f.kev_date_added,
+                kev_due_date=f.kev_due_date,
+                kev_required_action=f.kev_required_action,
+                epss_score=f.epss_score,
+                epss_percentile=f.epss_percentile,
+                threat_intel_multiplier=f.threat_intel_multiplier,
+                threat_intel_last_updated=f.threat_intel_last_updated
             )
             db.add(v_db)
 

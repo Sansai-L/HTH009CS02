@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Integer, Text, DateTime, ForeignKey
+from sqlalchemy import Column, String, Float, Integer, Text, DateTime, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 import uuid
@@ -54,6 +54,16 @@ class VulnerabilityFindingDB(Base):
     evidence = Column(Text, nullable=False)
     remediation_effort = Column(Float, nullable=False, default=4.0)
     remediation_action = Column(Text, nullable=True)
+
+    # Sprint 4 Threat Intelligence Columns
+    kev_known_exploited = Column(Boolean, nullable=False, default=False)
+    kev_date_added = Column(String, nullable=True)
+    kev_due_date = Column(String, nullable=True)
+    kev_required_action = Column(Text, nullable=True)
+    epss_score = Column(Float, nullable=True)
+    epss_percentile = Column(Float, nullable=True)
+    threat_intel_multiplier = Column(Float, nullable=False, default=1.0)
+    threat_intel_last_updated = Column(String, nullable=True)
 
     scan = relationship("ScanJobDB", back_populates="findings")
 

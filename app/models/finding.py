@@ -3,6 +3,7 @@ from typing import Optional, List
 
 class VulnerabilityFinding(BaseModel):
     finding_id: str = Field(..., description="Unique identifier for the finding")
+    cve_id: Optional[str] = Field(default=None, description="CVE ID if applicable (e.g. CVE-2011-2523)")
     target: str = Field(..., description="IP address or hostname of the lab target")
     port: int = Field(..., description="Port number")
     service: str = Field(..., description="Service name e.g., http, ssh, ftp")
@@ -21,10 +22,21 @@ class VulnerabilityFinding(BaseModel):
     remediation_action: Optional[str] = Field(default="Apply security patch and update service version", description="Recommended remediation action")
     remediation_status: Optional[str] = Field(default="PENDING", description="Remediation status: SELECTED, DEFERRED, PENDING")
 
+    # Sprint 4 Threat Intelligence Attributes
+    kev_known_exploited: bool = Field(default=False, description="True if CVE exists in CISA KEV catalog")
+    kev_date_added: Optional[str] = Field(default=None, description="CISA KEV date added")
+    kev_due_date: Optional[str] = Field(default=None, description="CISA KEV remediation due date")
+    kev_required_action: Optional[str] = Field(default=None, description="CISA KEV required action")
+    epss_score: Optional[float] = Field(default=None, description="FIRST EPSS exploit probability (0.0 - 1.0)")
+    epss_percentile: Optional[float] = Field(default=None, description="FIRST EPSS percentile (0.0 - 1.0)")
+    threat_intel_multiplier: float = Field(default=1.0, description="Threat intelligence adjustment multiplier")
+    threat_intel_last_updated: Optional[str] = Field(default=None, description="Timestamp of threat intel lookup")
+
 class ScanRequest(BaseModel):
     target: str = Field(..., description="IP or hostname of lab target")
     asset_criticality: float = Field(default=5.0, description="Asset Criticality (1.0 - 10.0)")
     exposure: float = Field(default=0.5, description="Exposure Factor (0.1 - 1.0)")
+    enrich_threat_intel: bool = Field(default=True, description="Whether to enrich findings with KEV/EPSS threat intelligence")
 
 class PlanRequest(BaseModel):
     scan_id: Optional[str] = Field(default=None, description="Optional scan_id to generate plan from")
