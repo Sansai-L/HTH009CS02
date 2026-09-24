@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HTH-CS-03 | Business-Risk Scanner & Remediation Planner</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .card { background-color: #1e293b; border: 1px solid #334155; color: #f8fafc; }
@@ -15,15 +14,10 @@
         .badge-LOW { background-color: #3b82f6; color: #ffffff; }
         .badge-SELECTED { background-color: #10b981; color: #ffffff; }
         .badge-DEFERRED { background-color: #64748b; color: #ffffff; }
-        .badge-KEV { background-color: #dc2626; color: #ffffff; font-weight: bold; }
-        .badge-EPSS { background-color: #8b5cf6; color: #ffffff; }
         .table-dark { background-color: #1e293b; --bs-table-bg: #1e293b; }
         .hero-title { font-weight: 700; background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .metric-card { background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid #334155; }
         .rationale-box { background-color: #1e293b; border-left: 4px solid #38bdf8; }
-        .threat-intel-box { background-color: #1e293b; border-left: 4px solid #8b5cf6; }
-        .interactive-badge { cursor: pointer; transition: transform 0.15s ease, opacity 0.15s ease; }
-        .interactive-badge:hover { opacity: 0.85; transform: translateY(-1px); }
     </style>
 </head>
 <body class="p-4">
@@ -31,12 +25,12 @@
         <header class="mb-4 pb-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
             <div>
                 <h1 class="hero-title h2 mb-1">HTH-CS-03: Risk Scanner & Remediation Planner</h1>
-                <p class="text-secondary mb-0">Sprint 4 — Threat Intelligence Integration (CISA KEV + FIRST EPSS)</p>
+                <p class="text-secondary mb-0">Business-Risk-Ranked Vulnerability Scanner & Capacity-Constrained Remediation Planner</p>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <span id="threatIntelBadge" class="badge bg-purple bg-gradient px-3 py-2 fs-6 interactive-badge" style="background-color: #8b5cf6;" data-bs-toggle="modal" data-bs-target="#threatIntelModal" onclick="openThreatIntelModal()">CISA KEV + EPSS Enriched</span>
-                <span id="dbStatusBadge" class="badge bg-success px-3 py-2 fs-6 interactive-badge" data-bs-toggle="modal" data-bs-target="#sqliteModal" onclick="openSqliteModal()">SQLite Persisted</span>
-                <span id="sprint4Badge" class="badge bg-primary px-3 py-2 fs-6 interactive-badge" data-bs-toggle="modal" data-bs-target="#sprint4Modal" onclick="openSprint4Modal()">Sprint 4 Active</span>
+                <span class="badge bg-purple bg-gradient px-3 py-2 fs-6" style="background-color: #8b5cf6;">CISA KEV + EPSS</span>
+                <span class="badge bg-success px-3 py-2 fs-6">SQLite Persistence</span>
+                <span class="badge bg-primary px-3 py-2 fs-6">Sprint Status</span>
             </div>
         </header>
 
@@ -116,24 +110,13 @@
             <p id="rationaleText" class="mb-0 text-light small"></p>
         </div>
 
-        <!-- Threat Intelligence Distinction Callout -->
-        <div class="card p-3 threat-intel-box mb-4 shadow-sm">
-            <h6 class="text-purple mb-1 fw-bold" style="color: #c084fc;">📡 Threat Intelligence Model Breakdown:</h6>
-            <div class="row small text-secondary">
-                <div class="col-md-3"><strong>CVSS</strong>: Technical Severity</div>
-                <div class="col-md-3"><strong>FIRST EPSS</strong>: Exploitation Likelihood (0-100%)</div>
-                <div class="col-md-3"><strong>CISA KEV</strong>: Active Exploitation in Wild</div>
-                <div class="col-md-3"><strong>Final BRS</strong>: Base BRS × Threat Multiplier</div>
-            </div>
-        </div>
-
         <!-- Status & Guardrail Message -->
         <div id="statusAlert" class="alert alert-info d-none shadow-sm mb-4" role="alert"></div>
 
         <!-- Ranked Findings & Remediation Plan Table -->
         <div class="card shadow">
             <div class="card-header border-secondary d-flex justify-content-between align-items-center">
-                <span class="fw-semibold">📊 Risk-Ranked Vulnerabilities & Threat Intelligence Roadmap</span>
+                <span class="fw-semibold">📊 Risk-Ranked Vulnerabilities & Remediation Roadmap</span>
                 <button id="btnGeneratePlan" class="btn btn-sm btn-success fw-bold px-3 d-none" onclick="triggerPlanGeneration()">
                     ⚡ RE-OPTIMIZE SPRINT PLAN
                 </button>
@@ -148,9 +131,6 @@
                                 <th>Port / Service</th>
                                 <th>Vulnerability</th>
                                 <th>CVSS</th>
-                                <th>EPSS Prob (Pctl)</th>
-                                <th>CISA KEV</th>
-                                <th>Threat Mult</th>
                                 <th>Business Risk (BRS)</th>
                                 <th>Severity</th>
                                 <th>Effort</th>
@@ -159,7 +139,7 @@
                         </thead>
                         <tbody id="findingsTableBody">
                             <tr>
-                                <td colspan="12" class="text-center py-4 text-secondary">No scan executed yet. Submit target configuration above to begin.</td>
+                                <td colspan="9" class="text-center py-4 text-secondary">No scan executed yet. Submit target configuration above to begin.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -169,180 +149,11 @@
 
         <!-- Methodology Footer -->
         <div class="mt-4 p-3 card bg-dark border-secondary">
-            <h6 class="text-info mb-2">💡 Threat-Intelligence-Enriched Remediation Planner:</h6>
+            <h6 class="text-info mb-2">💡 Business-Risk Remediation Planner:</h6>
             <p class="small text-secondary mb-0">
-                Formula: <code>Base BRS = Exploitability × Criticality × Exposure</code> | <code>Threat Multiplier = 1.0 + (EPSS × 0.5) + (0.5 if KEV)</code> | <code>Final BRS = Base BRS × Multiplier</code>.<br>
-                Knapsack Solver: <code>Maximize Sum(Final BRS) subject to Sum(Remediation Effort) <= Available Capacity</code>.
+                Formula: <code>Business Risk Score (BRS) = Exploitability × Asset Criticality × Exposure</code>.<br>
+                Knapsack Solver: <code>Maximize Sum(BRS) subject to Sum(Remediation Effort) <= Available Capacity</code>.
             </p>
-        </div>
-    </div>
-
-    <!-- MODAL 1: CISA KEV + EPSS Enriched -->
-    <div class="modal fade" id="threatIntelModal" tabindex="-1" aria-labelledby="threatIntelModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content bg-dark text-light border-secondary">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title" id="threatIntelModalLabel">📡 CISA KEV + FIRST EPSS Threat Intelligence Status</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <div class="card p-3 bg-secondary bg-opacity-10 border-info">
-                                <h6 class="text-info">🔴 CISA KEV Catalog Service</h6>
-                                <p class="mb-1 small">Status: <span id="kevStatusText" class="badge bg-success">ONLINE</span></p>
-                                <p class="mb-1 small">Catalog Entries: <strong id="kevEntriesCount" class="font-monospace text-light">-</strong></p>
-                                <p class="mb-0 small text-secondary">Source: <code>cisa.gov/known-exploited-vulnerabilities-catalog</code></p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card p-3 bg-secondary bg-opacity-10" style="border: 1px solid #8b5cf6;">
-                                <h6 style="color: #c084fc;">📈 FIRST EPSS Service</h6>
-                                <p class="mb-1 small">Status: <span id="epssStatusText" class="badge bg-success">ONLINE</span></p>
-                                <p class="mb-1 small">API Endpoint: <code class="text-light">api.first.org/data/v1/epss</code></p>
-                                <p class="mb-0 small text-secondary">Source: <code>FIRST Exploit Prediction Scoring System</code></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card p-3 bg-dark border-secondary mb-3">
-                        <h6 class="text-light">🔍 Live CVE Threat Intel Lookup</h6>
-                        <div class="input-group mb-2">
-                            <input type="text" id="cveInputModal" class="form-control bg-dark text-light border-secondary" placeholder="Enter CVE (e.g. CVE-2021-44228 or CVE-2023-34362)" value="CVE-2021-44228">
-                            <button class="btn btn-outline-info" onclick="lookupCveThreatIntel()">Lookup CVE</button>
-                        </div>
-                        <div id="cveLookupResult" class="p-2 border border-secondary rounded bg-secondary bg-opacity-10 text-light small d-none">
-                            <!-- Dynamic CVE Result -->
-                        </div>
-                    </div>
-
-                    <div class="card p-3 bg-dark border-secondary">
-                        <h6 class="text-warning">⚡ Threat Multiplier Formula Breakdown</h6>
-                        <p class="small text-secondary mb-1">
-                            <code>Threat Multiplier = 1.0 + (EPSS Probability × 0.5) + (0.5 if KEV Known Exploited)</code>
-                        </p>
-                        <p class="small text-secondary mb-0">
-                            Example: Log4Shell (CVE-2021-44228) is in CISA KEV (+0.5) and has EPSS ~0.97 (+0.485) &rarr; Multiplier = <strong>1.985x Base BRS</strong>.
-                        </p>
-                    </div>
-                </div>
-                <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL 2: SQLite Persisted -->
-    <div class="modal fade" id="sqliteModal" tabindex="-1" aria-labelledby="sqliteModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content bg-dark text-light border-secondary">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title" id="sqliteModalLabel">💾 SQLite Persistence Layer Status</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-4">
-                            <div class="card p-3 bg-secondary bg-opacity-10 border-success text-center">
-                                <span class="text-secondary small fw-bold">DATABASE STATUS</span>
-                                <h5 id="modalDbStatus" class="text-success mb-0">ONLINE</h5>
-                                <small id="modalDbType" class="text-secondary">SQLite 3</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card p-3 bg-secondary bg-opacity-10 border-info text-center">
-                                <span class="text-secondary small fw-bold">TRACKED ASSETS</span>
-                                <h3 id="modalAssetsCount" class="text-info mb-0">-</h3>
-                                <small class="text-secondary">Unique Assets</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card p-3 bg-secondary bg-opacity-10 border-warning text-center">
-                                <span class="text-secondary small fw-bold">SCAN JOBS</span>
-                                <h3 id="modalScansCount" class="text-warning mb-0">-</h3>
-                                <small class="text-secondary">Persisted Scans</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card p-3 bg-dark border-secondary mb-3">
-                        <h6 class="text-light">📊 Database Storage & Metrics</h6>
-                        <ul class="list-group list-group-flush bg-transparent">
-                            <li class="list-group-item bg-transparent text-light border-secondary d-flex justify-content-between align-items-center">
-                                <span>Database File:</span>
-                                <code id="modalDbFile" class="text-info">vulnerability_planner.db</code>
-                            </li>
-                            <li class="list-group-item bg-transparent text-light border-secondary d-flex justify-content-between align-items-center">
-                                <span>Persisted Vulnerability Findings:</span>
-                                <strong id="modalFindingsCount" class="text-warning">-</strong>
-                            </li>
-                            <li class="list-group-item bg-transparent text-light border-secondary d-flex justify-content-between align-items-center">
-                                <span>Latest Plan ID:</span>
-                                <code id="modalLatestPlanId" class="text-success">-</code>
-                            </li>
-                            <li class="list-group-item bg-transparent text-light border-secondary d-flex justify-content-between align-items-center">
-                                <span>Latest Plan Timestamp:</span>
-                                <span id="modalLatestPlanUpdated" class="text-light small font-monospace">-</span>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL 3: Sprint 4 Active -->
-    <div class="modal fade" id="sprint4Modal" tabindex="-1" aria-labelledby="sprint4ModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content bg-dark text-light border-secondary">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title" id="sprint4ModalLabel">🚀 Sprint 4 Implementation & Pipeline Status</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="card p-3 bg-secondary bg-opacity-10 border-primary mb-3">
-                        <h6 class="text-primary" id="modalActiveSprint">Sprint 4 — Threat Intelligence Integration</h6>
-                        <p class="small text-light mb-0">
-                            Fully functional pipeline integrating authorized target guardrails, port scanner, CVSS scoring, live CISA KEV catalog, FIRST EPSS API, Business Risk Score (BRS), 0/1 Knapsack Optimizer, and SQLite SQLAlchemy persistence.
-                        </p>
-                    </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <div class="card p-3 bg-dark border-secondary">
-                                <h6 class="text-info">🧪 Test Suite Status</h6>
-                                <h4 id="modalAutomatedTests" class="text-success mb-1">20/20 Passed</h4>
-                                <small class="text-secondary">Guardrail, Scorer, Planner, SQLite & Threat Intel unit/E2E tests.</small>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card p-3 bg-dark border-secondary">
-                                <h6 class="text-warning">⚡ Optimization Engine</h6>
-                                <h4 id="modalKnapsack" class="text-warning mb-1">0/1 Knapsack DP</h4>
-                                <small class="text-secondary">Deterministic capacity-constrained dynamic programming.</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card p-3 bg-dark border-secondary">
-                        <h6 class="text-light">🌐 Active REST API Routes</h6>
-                        <ul class="list-unstyled mb-0 small font-monospace text-secondary">
-                            <li><span class="badge bg-success me-1">GET</span> <code>/api/system/status</code> — Live system status & DB metrics</li>
-                            <li><span class="badge bg-primary me-1">POST</span> <code>/api/scan</code> — Target scanner & Threat Intel enricher</li>
-                            <li><span class="badge bg-primary me-1">POST</span> <code>/api/plan</code> — 0/1 Knapsack Remediation Optimizer</li>
-                            <li><span class="badge bg-success me-1">GET</span> <code>/api/plan/latest</code> — Get latest persisted plan</li>
-                            <li><span class="badge bg-success me-1">GET</span> <code>/api/threat-intel/{cve}</code> — Lookup CISA KEV & FIRST EPSS</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -357,97 +168,6 @@
             e.preventDefault();
             await executeScanAndPlan();
         });
-
-        async function fetchSystemStatus() {
-            try {
-                const res = await fetch('/api/system/status');
-                if (res.ok) {
-                    return await res.json();
-                }
-            } catch (e) {
-                console.error("Failed to fetch system status:", e);
-            }
-            return null;
-        }
-
-        async function openThreatIntelModal() {
-            const data = await fetchSystemStatus();
-            if (data && data.threat_intelligence) {
-                document.getElementById('kevStatusText').innerText = data.threat_intelligence.kev_status;
-                document.getElementById('kevEntriesCount').innerText = data.threat_intelligence.kev_catalog_entries.toLocaleString();
-                document.getElementById('epssStatusText').innerText = data.threat_intelligence.epss_status;
-            }
-            lookupCveThreatIntel();
-        }
-
-        async function openSqliteModal() {
-            const data = await fetchSystemStatus();
-            if (data && data.database) {
-                document.getElementById('modalDbStatus').innerText = data.database.status;
-                document.getElementById('modalDbType').innerText = data.database.db_type;
-                document.getElementById('modalDbFile').innerText = data.database.db_file;
-                document.getElementById('modalAssetsCount').innerText = data.database.assets_count;
-                document.getElementById('modalScansCount').innerText = data.database.scans_count;
-                document.getElementById('modalFindingsCount').innerText = data.database.findings_count;
-                document.getElementById('modalLatestPlanId').innerText = data.database.latest_plan_id;
-                document.getElementById('modalLatestPlanUpdated').innerText = data.database.latest_plan_updated;
-            }
-        }
-
-        async function openSprint4Modal() {
-            const data = await fetchSystemStatus();
-            if (data && data.sprint_status) {
-                document.getElementById('modalActiveSprint').innerText = data.sprint_status.active_sprint;
-                document.getElementById('modalAutomatedTests').innerText = data.sprint_status.automated_tests;
-                document.getElementById('modalKnapsack').innerText = data.sprint_status.knapsack_optimizer;
-            }
-        }
-
-        async function lookupCveThreatIntel() {
-            const cveInput = document.getElementById('cveInputModal').value.trim();
-            const resultDiv = document.getElementById('cveLookupResult');
-            if (!cveInput) return;
-            
-            resultDiv.classList.remove('d-none');
-            resultDiv.innerHTML = '<span class="text-info">Querying CISA KEV & FIRST EPSS...</span>';
-
-            try {
-                const res = await fetch(`/api/threat-intel/${encodeURIComponent(cveInput)}`);
-                const data = await res.json();
-                if (res.ok) {
-                    const kevText = data.kev.known_exploited ? 
-                        `<span class="badge bg-danger">🔴 EXPLOITED IN WILD</span>` : 
-                        `<span class="badge bg-secondary">NO KNOWN EXPLOITATION</span>`;
-                    
-                    let epssText = 'Unavailable';
-                    if (data.epss.epss_score !== null && data.epss.epss_score !== undefined) {
-                        const prob = (data.epss.epss_score * 100).toFixed(2);
-                        const pctl = data.epss.epss_percentile ? (data.epss.epss_percentile * 100).toFixed(2) : 'N/A';
-                        epssText = `Prob: <strong>${prob}%</strong> (Percentile: P${pctl}%)`;
-                    }
-
-                    let kevMeta = '';
-                    if (data.kev.details) {
-                        kevMeta = `<div class="mt-1 text-secondary">
-                            <strong>Vendor:</strong> ${data.kev.details.vendor_project || 'N/A'} | 
-                            <strong>Product:</strong> ${data.kev.details.product || 'N/A'}<br>
-                            <strong>Action:</strong> ${data.kev.details.required_action || 'N/A'}
-                        </div>`;
-                    }
-
-                    resultDiv.innerHTML = `
-                        <div><strong>CVE ID:</strong> <span class="text-info font-monospace">${data.cve_id}</span></div>
-                        <div class="mt-1"><strong>CISA KEV Status:</strong> ${kevText}</div>
-                        <div class="mt-1"><strong>FIRST EPSS:</strong> ${epssText}</div>
-                        ${kevMeta}
-                    `;
-                } else {
-                    resultDiv.innerHTML = `<span class="text-danger">Error: ${data.detail || 'Lookup failed'}</span>`;
-                }
-            } catch (e) {
-                resultDiv.innerHTML = `<span class="text-danger">Failed to fetch threat intel: ${e.message}</span>`;
-            }
-        }
 
         async function loadLatestPersistedPlan() {
             try {
@@ -475,13 +195,12 @@
         async function executeScanAndPlan() {
             const statusAlert = document.getElementById('statusAlert');
             statusAlert.className = 'alert alert-warning shadow-sm mb-4 d-block';
-            statusAlert.innerText = 'Scanning target, enriching with CISA KEV & FIRST EPSS, scoring BRS & persisting to SQLite...';
+            statusAlert.innerText = 'Scanning target, scoring BRS & persisting to SQLite...';
 
             const scanPayload = {
                 target: document.getElementById('target').value,
                 asset_criticality: parseFloat(document.getElementById('asset_criticality').value),
-                exposure: parseFloat(document.getElementById('exposure').value),
-                enrich_threat_intel: true
+                exposure: parseFloat(document.getElementById('exposure').value)
             };
 
             try {
@@ -525,7 +244,7 @@
                 }
 
                 statusAlert.className = 'alert alert-success shadow-sm mb-4 d-block';
-                statusAlert.innerText = `Scan & Threat Intel Enriched! Selected ${planData.selected_count} remediations using ${planData.total_effort_used} hrs. BRS Addressed: ${planData.total_risk_reduced} (${planData.risk_reduction_percentage}%).`;
+                statusAlert.innerText = `Scan Complete! Selected ${planData.selected_count} remediations using ${planData.total_effort_used} hrs. BRS Addressed: ${planData.total_risk_reduced} (${planData.risk_reduction_percentage}%).`;
                 
                 document.getElementById('btnGeneratePlan').classList.remove('d-none');
                 document.getElementById('lastSavedPlanText').innerText = `Plan ID: ${planData.plan_id.substring(0,8)}...`;
@@ -569,19 +288,6 @@
                 }
                 
                 const cveDisplay = f.cve_id ? `<span class="badge bg-dark border border-secondary">${f.cve_id}</span>` : 'N/A';
-                
-                let epssDisplay = 'N/A';
-                if (f.epss_score !== null && f.epss_score !== undefined) {
-                    const probPct = (f.epss_score * 100).toFixed(1);
-                    const pctlPct = f.epss_percentile ? (f.epss_percentile * 100).toFixed(1) : 'N/A';
-                    epssDisplay = `<span class="badge badge-EPSS">${probPct}% (P${pctlPct}%)</span>`;
-                }
-
-                const kevDisplay = f.kev_known_exploited ? 
-                    `<span class="badge badge-KEV" title="CISA KEV Known Exploited Vulnerability">🔴 EXPLOITED</span>` : 
-                    `<span class="badge bg-secondary">NO</span>`;
-
-                const multDisplay = `<span class="badge bg-dark text-info border border-info">x${(f.threat_intel_multiplier || 1.0).toFixed(2)}</span>`;
 
                 row.innerHTML = `
                     <td><strong>${idx + 1}</strong></td>
@@ -589,9 +295,6 @@
                     <td><span class="badge bg-secondary">${f.port}/${f.service}</span></td>
                     <td><strong>${f.vulnerability}</strong><br><small class="text-secondary">${f.version}</small></td>
                     <td><span class="text-warning font-monospace">${f.cvss}</span></td>
-                    <td>${epssDisplay}</td>
-                    <td>${kevDisplay}</td>
-                    <td>${multDisplay}</td>
                     <td><strong class="text-info fs-5">${f.business_risk}</strong></td>
                     <td><span class="badge badge-${f.severity} px-2 py-1">${f.severity}</span></td>
                     <td><strong class="text-light font-monospace">${f.remediation_effort} hrs</strong></td>
@@ -603,4 +306,3 @@
     </script>
 </body>
 </html>
-
