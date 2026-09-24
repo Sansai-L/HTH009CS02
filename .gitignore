@@ -1,7 +1,15 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node / Python temporary
+node_modules/
 __pycache__/
 *.pyc
-*.pyo
-.pytest_cache/
-.env
-*.log
-*.db

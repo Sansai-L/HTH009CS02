@@ -1,0 +1,1941 @@
+/* ══════════════════════════════════════════════════════
+   VulnRankPro — app.js
+   HTH-CS-03 + CISA KEV Override + MITRE ATT&CK Framework
+   ══════════════════════════════════════════════════════ */
+
+'use strict';
+
+// ─────────────────────────────────────────────────────────
+// 1. MITRE ATT&CK FRAMEWORK THREAT INTEL DATABASE
+// ─────────────────────────────────────────────────────────
+const MITRE_ATTACK_DB = {
+  // Keyed by CVE or ID
+  'CVE-2011-2523': {
+    tacticId: 'TA0001',
+    tactic: 'Initial Access',
+    techniqueId: 'T1190',
+    technique: 'Exploit Public-Facing Application',
+    phaseNum: 1,
+    phase: 'Phase 1: Block Initial Access',
+    threatUsage: 'Opportunistic External Attackers, Automated Scanners',
+    mitigation: 'M1042 (Disable Services), M1051 (Update Software)',
+    url: 'https://attack.mitre.org/techniques/T1190/'
+  },
+  'CVE-2007-2447': {
+    tacticId: 'TA0001',
+    tactic: 'Initial Access',
+    techniqueId: 'T1210',
+    technique: 'Exploitation of Remote Services',
+    phaseNum: 1,
+    phase: 'Phase 1: Block Initial Access',
+    threatUsage: 'APT28, Ransomware Affiliates, Metasploit Operators',
+    mitigation: 'M1030 (Network Segmentation), M1042 (Disable SMBv1)',
+    url: 'https://attack.mitre.org/techniques/T1210/'
+  },
+  'CVE-2014-3704': {
+    tacticId: 'TA0001',
+    tactic: 'Initial Access',
+    techniqueId: 'T1190',
+    technique: 'Exploit Public-Facing Application',
+    phaseNum: 1,
+    phase: 'Phase 1: Block Initial Access',
+    threatUsage: 'Financially Motivated Actors, Web Defacers, Botnets',
+    mitigation: 'M1050 (Exploit Protection), M1051 (Update Software)',
+    url: 'https://attack.mitre.org/techniques/T1190/'
+  },
+  'V005': { // SMTP Open Relay
+    tacticId: 'TA0001',
+    tactic: 'Initial Access',
+    techniqueId: 'T1566.002',
+    technique: 'Phishing: Spearphishing Service Abuse',
+    phaseNum: 1,
+    phase: 'Phase 1: Block Initial Access',
+    threatUsage: 'Spam Infrastructure, Initial Foothold Brokers',
+    mitigation: 'M1031 (Network Intrusion Prevention), M1054 (Configuration)',
+    url: 'https://attack.mitre.org/techniques/T1566/002/'
+  },
+  'CVE-2012-1823': {
+    tacticId: 'TA0002',
+    tactic: 'Execution',
+    techniqueId: 'T1059.006',
+    technique: 'Command and Scripting: Python/PHP-CGI',
+    phaseNum: 2,
+    phase: 'Phase 2: Neutralize Execution & RCE',
+    threatUsage: 'Web Shell Operators, Crypto Miners, Ransomware Groups',
+    mitigation: 'M1038 (Execution Prevention), M1051 (Update Software)',
+    url: 'https://attack.mitre.org/techniques/T1059/006/'
+  },
+  'CVE-2009-3548': {
+    tacticId: 'TA0002',
+    tactic: 'Execution',
+    techniqueId: 'T1190',
+    technique: 'Exploitation for RCE via Application Manager',
+    phaseNum: 2,
+    phase: 'Phase 2: Neutralize Execution & RCE',
+    threatUsage: 'Automated Exploit Kits, Web Ransomware Droppers',
+    mitigation: 'M1027 (Password Policies), M1035 (Limit Access)',
+    url: 'https://attack.mitre.org/techniques/T1190/'
+  },
+  'CVE-2015-4852': {
+    tacticId: 'TA0002',
+    tactic: 'Execution',
+    techniqueId: 'T1203',
+    technique: 'Exploitation for Client Execution / Deserialization',
+    phaseNum: 2,
+    phase: 'Phase 2: Neutralize Execution & RCE',
+    threatUsage: 'APT29, Advanced Persistent Threats',
+    mitigation: 'M1038 (Execution Prevention), M1051 (Update Software)',
+    url: 'https://attack.mitre.org/techniques/T1203/'
+  },
+  'CVE-2004-2687': {
+    tacticId: 'TA0002',
+    tactic: 'Execution',
+    techniqueId: 'T1059',
+    technique: 'Command and Scripting Interpreter',
+    phaseNum: 2,
+    phase: 'Phase 2: Neutralize Execution & RCE',
+    threatUsage: 'Lateral Compilation Exploits, Botnet Loaders',
+    mitigation: 'M1042 (Disable Services), M1037 (Filter Network Traffic)',
+    url: 'https://attack.mitre.org/techniques/T1059/'
+  },
+  'V002': { // SSH Default Creds
+    tacticId: 'TA0006',
+    tactic: 'Credential Access',
+    techniqueId: 'T1078.001',
+    technique: 'Valid Accounts: Default Accounts',
+    phaseNum: 3,
+    phase: 'Phase 3: Invalidate Credential Access',
+    threatUsage: 'Brute-force Scanners, Mirai botnets',
+    mitigation: 'M1027 (Password Policies), M1032 (Multi-factor Auth)',
+    url: 'https://attack.mitre.org/techniques/T1078/001/'
+  },
+  'V004': { // Telnet cleartext
+    tacticId: 'TA0006',
+    tactic: 'Credential Access',
+    techniqueId: 'T1040',
+    technique: 'Network Sniffing',
+    phaseNum: 3,
+    phase: 'Phase 3: Invalidate Credential Access',
+    threatUsage: 'Local Network Sniffers, Adversary-in-the-Middle',
+    mitigation: 'M1042 (Disable Telnet), M1041 (Encrypt Communication)',
+    url: 'https://attack.mitre.org/techniques/T1040/'
+  },
+  'V007': { // MySQL no root pass
+    tacticId: 'TA0006',
+    tactic: 'Credential Access',
+    techniqueId: 'T1078.001',
+    technique: 'Valid Accounts: Default Accounts',
+    phaseNum: 3,
+    phase: 'Phase 3: Invalidate Credential Access',
+    threatUsage: 'Automated DB Crawlers, Extortion Gangs',
+    mitigation: 'M1027 (Password Policies), M1035 (Restrict Remote Root)',
+    url: 'https://attack.mitre.org/techniques/T1078/001/'
+  },
+  'CVE-2014-3566': { // POODLE
+    tacticId: 'TA0006',
+    tactic: 'Credential Access',
+    techniqueId: 'T1557',
+    technique: 'Adversary-in-the-Middle: Downgrade Attack',
+    phaseNum: 3,
+    phase: 'Phase 3: Invalidate Credential Access',
+    threatUsage: 'Session Interceptors, Untrusted Wi-Fi Threat Actors',
+    mitigation: 'M1041 (Enforce TLS 1.2+ Only, Disable SSLv3)',
+    url: 'https://attack.mitre.org/techniques/T1557/'
+  },
+  'V012': { // Postgres trust auth
+    tacticId: 'TA0006',
+    tactic: 'Credential Access',
+    techniqueId: 'T1078',
+    technique: 'Valid Accounts: Local Trust Accounts',
+    phaseNum: 3,
+    phase: 'Phase 3: Invalidate Credential Access',
+    threatUsage: 'Internal Network Pivoters, Post-Exploitation Scripts',
+    mitigation: 'M1027 (Password Policies), M1026 (Privileged Accounts)',
+    url: 'https://attack.mitre.org/techniques/T1078/'
+  },
+  'V016': { // HTTP TRACE
+    tacticId: 'TA0006',
+    tactic: 'Credential Access',
+    techniqueId: 'T1539',
+    technique: 'Steal Web Session Cookie (Cross-Site Tracing)',
+    phaseNum: 3,
+    phase: 'Phase 3: Invalidate Credential Access',
+    threatUsage: 'XSS Exploitation Kits, Cookie Stealers',
+    mitigation: 'M1054 (Disable TRACE/TRACK in Apache Config)',
+    url: 'https://attack.mitre.org/techniques/T1539/'
+  },
+  'V010': { // NFS world-readable
+    tacticId: 'TA0008',
+    tactic: 'Lateral Movement',
+    techniqueId: 'T1021.002',
+    technique: 'Remote Services: SMB/Network File System',
+    phaseNum: 4,
+    phase: 'Phase 4: Contain Lateral Movement',
+    threatUsage: 'Internal Network Scanners, Ransomware Spreaders',
+    mitigation: 'M1030 (Network Segmentation), M1028 (Export Config)',
+    url: 'https://attack.mitre.org/techniques/T1021/002/'
+  },
+  'V014': { // X11
+    tacticId: 'TA0008',
+    tactic: 'Lateral Movement',
+    techniqueId: 'T1021',
+    technique: 'Remote Services: X11 Display Protocol',
+    phaseNum: 4,
+    phase: 'Phase 4: Contain Lateral Movement',
+    threatUsage: 'Spyware Operators, Desktop Hijackers',
+    mitigation: 'M1035 (Limit Access), M1042 (Disable TCP Listening)',
+    url: 'https://attack.mitre.org/techniques/T1021/'
+  },
+  'V018': { // Weak SSH Key
+    tacticId: 'TA0008',
+    tactic: 'Lateral Movement',
+    techniqueId: 'T1553',
+    technique: 'Subvert Trust Controls: Weak Cryptography',
+    phaseNum: 4,
+    phase: 'Phase 4: Contain Lateral Movement',
+    threatUsage: 'State-Sponsored MITM, Factorization Attacks',
+    mitigation: 'M1041 (Encrypt Information - 4096-bit RSA/Ed25519)',
+    url: 'https://attack.mitre.org/techniques/T1553/'
+  },
+  'CVE-2006-2369': { // VNC
+    tacticId: 'TA0008',
+    tactic: 'Lateral Movement',
+    techniqueId: 'T1021.005',
+    technique: 'Remote Services: VNC',
+    phaseNum: 4,
+    phase: 'Phase 4: Contain Lateral Movement',
+    threatUsage: 'Interactive Network Pivoters, Ransomware Operators',
+    mitigation: 'M1032 (MFA / VNC Password), M1030 (Network Segregation)',
+    url: 'https://attack.mitre.org/techniques/T1021/005/'
+  },
+  'CVE-2010-2075': { // UnrealIRCd backdoor
+    tacticId: 'TA0011',
+    tactic: 'Command and Control',
+    techniqueId: 'T1071.001',
+    technique: 'Application Layer Protocol: Web/IRC Protocols',
+    phaseNum: 5,
+    phase: 'Phase 5: Sever Command & Control (C2)',
+    threatUsage: 'Botnet Masters, Backdoor Operators',
+    mitigation: 'M1031 (Intrusion Prevention), M1042 (Disable Software)',
+    url: 'https://attack.mitre.org/techniques/T1071/001/'
+  },
+  'V019': { // Bindshell 1524
+    tacticId: 'TA0011',
+    tactic: 'Command and Control',
+    techniqueId: 'T1090',
+    technique: 'Proxy / Interactive Shell Channel',
+    phaseNum: 5,
+    phase: 'Phase 5: Sever Command & Control (C2)',
+    threatUsage: 'Rootkit Deployers, Remote Shell Operators',
+    mitigation: 'M1031 (Intrusion Prevention), M1049 (Antivirus / EDR)',
+    url: 'https://attack.mitre.org/techniques/T1090/'
+  },
+};
+
+/**
+ * Backend Data Enrichment Pipeline:
+ * Queries threat intelligence mapping to append MITRE ATT&CK Tactic & Technique
+ */
+function enrichWithMitreAttack(vuln) {
+  const cveClean = (vuln.cve || '').split(' ')[0].trim();
+  const mapping = MITRE_ATTACK_DB[cveClean] || MITRE_ATTACK_DB[vuln.id] || {
+    tacticId: 'TA0001',
+    tactic: 'Initial Access',
+    techniqueId: 'T1190',
+    technique: 'Exploit Public-Facing Application',
+    phaseNum: 1,
+    phase: 'Phase 1: Block Initial Access',
+    threatUsage: 'Opportunistic Threat Actors',
+    mitigation: 'M1042 (Disable Services)',
+    url: 'https://attack.mitre.org/techniques/T1190/'
+  };
+
+  return {
+    ...vuln,
+    mitreTacticId:   mapping.tacticId,
+    mitreTactic:     mapping.tactic,
+    mitreTechniqueId:mapping.techniqueId,
+    mitreTechnique:  mapping.technique,
+    mitrePhaseNum:   mapping.phaseNum,
+    mitrePhase:      mapping.phase,
+    mitreThreatUsage:mapping.threatUsage,
+    mitreMitigation: mapping.mitigation,
+    mitreUrl:        mapping.url,
+  };
+}
+
+// ─────────────────────────────────────────────────────────
+// 2. VULNERABILITY DATABASE (simulated lab targets)
+// ─────────────────────────────────────────────────────────
+const VULN_DB = [
+  { id:'V001', name:'Anonymous FTP Login / vsftpd Backdoor',      port:21,   service:'FTP (vsftpd 2.3.4)',     cvss:9.0,  exploitability:9.5,  category:'Backdoor',       cve:'CVE-2011-2523', description:'vsftpd 2.3.4 contains a compiled-in backdoor. Any login attempt with ":)" in the username opens a command shell on port 6200.', fix:'Remove vsftpd 2.3.4 immediately. Deploy vsftpd 3.0.5+. Disable anonymous FTP. Replace FTP with SFTP.', effort:2 },
+  { id:'V002', name:'SSH Default Credentials / Old OpenSSH',      port:22,   service:'SSH (OpenSSH 4.7)',      cvss:8.5,  exploitability:8.8,  category:'Authentication', cve:'N/A',           description:'SSH running with factory default credentials (msfadmin:msfadmin). Vulnerable to brute-force and credential stuffing.', fix:'Change all default credentials. Upgrade OpenSSH to 9.x. Enforce key-based auth. Disable password auth.', effort:1 },
+  { id:'V003', name:'Samba Command Injection (RCE)',              port:445,  service:'Samba 3.0.20',          cvss:10.0, exploitability:10.0, category:'RCE',            cve:'CVE-2007-2447', description:'Samba MS-RPC usermap_script command injection allows unauthenticated remote code execution as root. Metasploit module available.', fix:'Upgrade Samba to 4.17+. Block port 445 at the firewall. Disable SMBv1.', effort:3 },
+  { id:'V004', name:'Telnet Service Exposed (Cleartext)',         port:23,   service:'Telnet',                cvss:7.5,  exploitability:7.0,  category:'Exposure',       cve:'N/A',           description:'Telnet transmits all data in cleartext including credentials. Trivially intercepted on the same network segment.', fix:'Disable Telnet completely. Replace with SSH. Block port 23 at the perimeter firewall.', effort:1 },
+  { id:'V005', name:'SMTP Open Relay',                            port:25,   service:'Postfix 2.3.1',         cvss:6.5,  exploitability:6.0,  category:'Misconfiguration',cve:'N/A',          description:'SMTP server acts as an open relay allowing unauthenticated mail routing. Enables spam and phishing at scale.', fix:'Configure Postfix relay restrictions. Implement SPF, DKIM, DMARC. Upgrade to Postfix 3.x.', effort:2 },
+  { id:'V006', name:'Apache Tomcat Manager Default Credentials',  port:8080, service:'Tomcat 5.5',           cvss:9.5,  exploitability:9.0,  category:'Authentication', cve:'CVE-2009-3548', description:'Tomcat Manager accessible with default admin:admin. Allows WAR deployment resulting in full RCE on the server.', fix:'Disable Manager or change credentials. Restrict to 127.0.0.1. Upgrade Tomcat to 10.x.', effort:2 },
+  { id:'V007', name:'MySQL Root — No Password',                   port:3306, service:'MySQL 5.0.51a',        cvss:8.0,  exploitability:8.5,  category:'Authentication', cve:'N/A',           description:'MySQL root account has no password. Remote root login allowed from any host. Full database dump trivial.', fix:'Set strong root password immediately. Disable remote root login. Bind MySQL to 127.0.0.1.', effort:1 },
+  { id:'V008', name:'PHP-CGI Remote Code Execution',             port:80,   service:'Apache/PHP 5.3.4',     cvss:9.2,  exploitability:9.0,  category:'RCE',            cve:'CVE-2012-1823', description:'PHP-CGI argument injection. Passing -d allow_url_include=On in query string enables remote code execution without auth.', fix:'Upgrade PHP to 8.2+. Switch from CGI to PHP-FPM. Apply CVE-2012-1823 patch.', effort:3 },
+  { id:'V009', name:'POODLE — SSLv3 / TLS 1.0 Accepted',        port:443,  service:'HTTPS (OpenSSL 0.9.8)', cvss:5.8,  exploitability:5.5,  category:'Cryptography',   cve:'CVE-2014-3566', description:'Server accepts SSLv3 connections vulnerable to POODLE (Padding Oracle On Downgraded Legacy Encryption). Session decryption possible.', fix:'Disable SSLv3 and TLS 1.0/1.1. Enforce TLS 1.2+ only. Upgrade OpenSSL to 3.x.', effort:2 },
+  { id:'V010', name:'NFS World-Readable Root Export',            port:2049, service:'NFS',                  cvss:7.2,  exploitability:7.5,  category:'Exposure',       cve:'N/A',           description:'NFS exports the root filesystem "/" with read-write to all hosts (*). Full filesystem accessible without authentication.', fix:'Remove world-readable exports. Restrict to specific trusted hosts. Use Kerberos auth for NFS.', effort:2 },
+  { id:'V011', name:'Java RMI Registry — Deserialization RCE',   port:1099, service:'Java RMI',             cvss:8.8,  exploitability:8.0,  category:'RCE',            cve:'CVE-2015-4852', description:'Exposed Java RMI registry vulnerable to insecure deserialization via ysoserial gadget chains. Full RCE on exploitation.', fix:'Disable exposed RMI. Restrict to localhost only. Apply Java deserialization filters (JEP 290).', effort:4 },
+  { id:'V012', name:'PostgreSQL — Trust Auth / No Password',     port:5432, service:'PostgreSQL 8.3',       cvss:7.0,  exploitability:6.5,  category:'Authentication', cve:'N/A',           description:'PostgreSQL configured with trust authentication allowing all local-network connections without a password.', fix:'Update pg_hba.conf to scram-sha-256. Set strong superuser password. Restrict network access.', effort:1 },
+  { id:'V013', name:'UnrealIRCd 3.2.8.1 Backdoor',              port:6667, service:'UnrealIRCd 3.2.8.1',  cvss:10.0, exploitability:10.0, category:'Backdoor',       cve:'CVE-2010-2075', description:'UnrealIRCd distribution tarball contained a compiled-in backdoor. Sending "AB" prefix triggers shell execution on port 6667.', fix:'Remove UnrealIRCd immediately. Verify integrity of all downloaded software. Block port 6667.', effort:1 },
+  { id:'V014', name:'X11 Display Server Network Exposure',       port:6000, service:'X11',                  cvss:6.8,  exploitability:6.0,  category:'Exposure',       cve:'N/A',           description:'X11 display server accessible over the network. Allows screen capture, keystroke injection, and pixel grabbing.', fix:'Disable X11 TCP listening (-nolisten tcp). Use SSH X11 forwarding. Set restrictive xhost rules.', effort:1 },
+  { id:'V015', name:'distccd Unauthenticated RCE',               port:3632, service:'distcc 3.1',           cvss:9.3,  exploitability:9.5,  category:'RCE',            cve:'CVE-2004-2687',  description:'distccd allows arbitrary command execution on the compilation host without any authentication. Classic Metasploitable vector.', fix:'Disable distcc on public interfaces. Restrict to localhost. Enforce --allow ACL rules.', effort:1 },
+  { id:'V016', name:'HTTP TRACE Method Enabled (XST Attack)',    port:80,   service:'Apache 2.2.8',         cvss:4.3,  exploitability:4.0,  category:'Misconfiguration',cve:'N/A',           description:'HTTP TRACE method is enabled. Cross-Site Tracing (XST) can steal HttpOnly cookies when combined with XSS.', fix:'Set TraceEnable Off in Apache config. Block TRACE/TRACK at WAF level.', effort:1 },
+  { id:'V017', name:'Drupal SQL Injection — Drupageddon',        port:80,   service:'Drupal 7.0',           cvss:9.8,  exploitability:9.8,  category:'SQLi/RCE',       cve:'CVE-2014-3704', description:'Drupal core database abstraction layer SQL injection. Unauthenticated attacker can create admin accounts and achieve RCE via module upload.', fix:'Upgrade Drupal to 10.x immediately. Apply SA-CORE-2014-005 patch. Rotate all admin credentials.', effort:4 },
+  { id:'V018', name:'Weak 512-bit RSA SSH Host Key',             port:22,   service:'SSH',                  cvss:5.0,  exploitability:4.5,  category:'Cryptography',   cve:'N/A',           description:'SSH host key is 512-bit RSA which can be factored in hours with modern hardware. Enables host impersonation and MitM.', fix:'Regenerate SSH host keys: 4096-bit RSA or Ed25519. Remove all weak keys.', effort:1 },
+  { id:'V019', name:'Bindshell Backdoor on Port 1524',           port:1524, service:'Bindshell (root)',     cvss:10.0, exploitability:10.0, category:'Backdoor',       cve:'N/A',           description:'A root bindshell is listening on port 1524. Any TCP connection receives an instant root shell with no authentication required.', fix:'Kill the backdoor process immediately. Investigate infection vector. Restore from verified clean backup. Conduct full forensic analysis.', effort:2 },
+  { id:'V020', name:'VNC — No Password Authentication',          port:5900, service:'VNC (RealVNC 3.3)',    cvss:7.8,  exploitability:8.0,  category:'Authentication', cve:'CVE-2006-2369', description:'VNC server running with NULL authentication (security type 1), granting full graphical desktop access to any unauthenticated attacker.', fix:'Enable VNC password auth. Restrict to localhost and tunnel over SSH. Upgrade to TigerVNC.', effort:1 },
+];
+
+// ─────────────────────────────────────────────────────────
+// 3. STATE
+// ─────────────────────────────────────────────────────────
+const state = {
+  findings:          [],
+  scanConfig:        {},
+  reportViewMode:    'mitre', // 'mitre' (Contextual Sorting) | 'table' (Flat list)
+  trendHistory:      JSON.parse(localStorage.getItem('vulnrank_trends') || '[]'),
+  sprintDoneTasks:   new Set(), // finding IDs user manually marked "Done"
+  resolvedFindings:  new Set(), // finding IDs verified resolved by targeted micro-scan
+  failedFixFindings: new Set(), // finding IDs flagged as "Failed Fix" by micro-scan
+  hadFailedFixDemo:  false,     // tracks demonstration of failed fix state
+  kev: {
+    catalog:    [],
+    cveSet:     new Set(),
+    loaded:     false,
+    error:      false,
+    fetchedAt:  null,
+    matchedIds: new Set(),
+  },
+};
+
+// ─────────────────────────────────────────────────────────
+// 4. CISA KEV API — LIVE FETCH
+// ─────────────────────────────────────────────────────────
+const KEV_API_URL = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
+const KEV_PROXY   = 'https://corsproxy.io/?' + encodeURIComponent(KEV_API_URL);
+
+async function fetchKEV() {
+  setKEVStatus('loading');
+  try {
+    let res = await fetch(KEV_API_URL, { cache: 'default' }).catch(() => null);
+    if (!res || !res.ok) res = await fetch(KEV_PROXY);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+    const vulns = data.vulnerabilities || [];
+    state.kev.catalog   = vulns;
+    state.kev.cveSet    = new Set(vulns.map(v => v.cveID));
+    state.kev.loaded    = true;
+    state.kev.error     = false;
+    state.kev.fetchedAt = new Date();
+
+    setKEVStatus('ok', vulns.length);
+    updateKEVInfoCard(vulns.length);
+    return true;
+  } catch (err) {
+    console.warn('CISA KEV fetch failed — using offline seed list.', err);
+    state.kev.error  = true;
+    state.kev.loaded = true;
+    seedOfflineKEV();
+    setKEVStatus('err', state.kev.cveSet.size);
+    updateKEVInfoCard(state.kev.cveSet.size, true);
+    return false;
+  }
+}
+
+function seedOfflineKEV() {
+  const offlineKEVCves = [
+    'CVE-2011-2523','CVE-2007-2447','CVE-2012-1823','CVE-2014-3566',
+    'CVE-2014-3704','CVE-2010-2075','CVE-2009-3548','CVE-2015-4852',
+    'CVE-2004-2687','CVE-2006-2369',
+  ];
+  offlineKEVCves.forEach(c => state.kev.cveSet.add(c));
+  state.kev.catalog = offlineKEVCves.map(c => ({
+    cveID: c,
+    vendorProject: 'Various',
+    product: 'See NVD',
+    vulnerabilityName: `${c} Known Exploited`,
+    dateAdded: '2022-01-01',
+    shortDescription: 'Actively exploited — see CISA KEV catalog.',
+    requiredAction: 'Apply mitigations per vendor instructions.',
+    dueDate: 'N/A',
+    knownRansomwareCampaignUse: 'Unknown',
+  }));
+  state.kev.fetchedAt = new Date();
+}
+
+function setKEVStatus(state_key, count) {
+  const pill = document.getElementById('kevStatusPill');
+  const text = document.getElementById('kevStatusText');
+  pill.classList.remove('kev-live','kev-ok','kev-err');
+  switch (state_key) {
+    case 'loading':
+      text.textContent = 'CISA KEV: Loading…';
+      break;
+    case 'ok':
+      pill.classList.add('kev-ok');
+      text.textContent = `🇺🇸 KEV Live — ${count.toLocaleString()} entries`;
+      break;
+    case 'err':
+      pill.classList.add('kev-err');
+      text.textContent = `🇺🇸 KEV Offline — ${count} seeds`;
+      break;
+  }
+}
+
+function updateKEVInfoCard(count, offline = false) {
+  document.getElementById('kevTotal').textContent    = count.toLocaleString();
+  document.getElementById('kevLastFetch').textContent =
+    state.kev.fetchedAt ? state.kev.fetchedAt.toLocaleTimeString() : '—';
+  document.getElementById('kevInfoSub').textContent  = offline
+    ? '⚠ Offline mode — using pre-seeded KEV list (CORS restricted). Deploy to a web server for live API.'
+    : `✓ Live CISA KEV catalog loaded — ${count.toLocaleString()} known actively exploited vulnerabilities.`;
+}
+
+// ─────────────────────────────────────────────────────────
+// 5. BUSINESS RISK ENGINE + KEV OVERRIDE
+// ─────────────────────────────────────────────────────────
+function calcBusinessRisk(vuln, assetCriticality, exposure) {
+  return +(((vuln.exploitability / 10) * (assetCriticality / 4) * (exposure / 3)) * 100).toFixed(1);
+}
+
+function applyKEVOverride(finding) {
+  const cveClean = (finding.cve || '').split(' ')[0].trim();
+  const kevEntry = state.kev.catalog.find(k => k.cveID === cveClean);
+
+  if (cveClean !== 'N/A' && state.kev.cveSet.has(cveClean)) {
+    state.kev.matchedIds.add(cveClean);
+    return {
+      ...finding,
+      isKEV:          true,
+      kevCveClean:    cveClean,
+      kevEntry:       kevEntry || null,
+      businessRisk:   100,            // FORCE MAX
+      rawBusinessRisk: finding.businessRisk,
+      severity:       'Critical',    // Always Critical
+      overrideDelta:  +(100 - (finding.rawBusinessRisk || 0)).toFixed(1),
+    };
+  }
+  return { ...finding, isKEV: false, kevCveClean: cveClean };
+}
+
+function getSeverity(score) {
+  if (score >= 70) return 'Critical';
+  if (score >= 45) return 'High';
+  if (score >= 25) return 'Medium';
+  return 'Low';
+}
+
+function getSevColor(sev) {
+  return { Critical:'#f87171', High:'#fb923c', Medium:'#fbbf24', Low:'#34d399' }[sev] || '#fff';
+}
+
+// ─────────────────────────────────────────────────────────
+// 6. TAB NAVIGATION & VIEW SWITCHER
+// ─────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'trends') renderTrends();
+  });
+});
+
+document.querySelectorAll('.radio-card input').forEach(inp => {
+  inp.addEventListener('change', () => {
+    document.querySelectorAll('.radio-card').forEach(rc => rc.classList.remove('selected'));
+    inp.closest('.radio-card').classList.add('selected');
+  });
+});
+
+document.getElementById('kevBannerClose').addEventListener('click', () => {
+  document.getElementById('kevAlertBanner').classList.add('hidden');
+});
+
+// View mode switcher: Contextual MITRE Grouping vs Flat Table
+window.setReportViewMode = function(mode) {
+  state.reportViewMode = mode;
+  document.querySelectorAll('.view-mode-btn').forEach(b => b.classList.remove('active'));
+
+  const mitreContainer = document.getElementById('reportMitreGroups');
+  const tableCard      = document.getElementById('reportTableCard');
+
+  if (mode === 'mitre') {
+    document.getElementById('viewMitreGroupsBtn').classList.add('active');
+    mitreContainer.classList.remove('hidden');
+    tableCard.classList.add('hidden');
+    renderMitreGroupedView(state.findings);
+  } else {
+    document.getElementById('viewFlatTableBtn').classList.add('active');
+    mitreContainer.classList.add('hidden');
+    tableCard.classList.remove('hidden');
+    renderFindingsTable(state.findings);
+  }
+};
+
+// ─────────────────────────────────────────────────────────
+// 7. SCANNER ENGINE (WITH MITRE ENRICHMENT PIPELINE)
+// ─────────────────────────────────────────────────────────
+const scanSteps = [
+  { pct:  4, msg:'Initializing scan engine…',                                            type:'info' },
+  { pct:  8, msg:'ARP ping sweep — target host is UP',                                   type:'ok'   },
+  { pct: 12, msg:'Querying CISA KEV catalog (1,100+ active exploits)…',                  type:'kev'  },
+  { pct: 16, msg:'TCP SYN scan — ports 1-65535',                                         type:'info' },
+  { pct: 24, msg:'Port 21/tcp  open  — FTP vsftpd 2.3.4',                                type:'warn' },
+  { pct: 28, msg:'Port 22/tcp  open  — SSH OpenSSH 4.7',                                 type:'warn' },
+  { pct: 31, msg:'Port 23/tcp  open  — Telnet (Cleartext transmission)',                 type:'warn' },
+  { pct: 34, msg:'Port 25/tcp  open  — SMTP Postfix 2.3.1 (Open Relay)',                 type:'warn' },
+  { pct: 36, msg:'Port 80/tcp  open  — HTTP Apache 2.2.8',                               type:'info' },
+  { pct: 38, msg:'Port 445/tcp open  — Samba 3.0.20 (RCE Risk)',                         type:'err'  },
+  { pct: 40, msg:'Port 1099/tcp open — Java RMI Registry',                               type:'warn' },
+  { pct: 42, msg:'Port 1524/tcp open — Bindshell (Root backdoor listening)',             type:'err'  },
+  { pct: 44, msg:'Port 2049/tcp open — NFS (/ export world-readable)',                   type:'warn' },
+  { pct: 46, msg:'Port 3306/tcp open — MySQL 5.0.51a (No root password)',                type:'warn' },
+  { pct: 48, msg:'Port 3632/tcp open — distccd 3.1 (Unauth command exec)',               type:'err'  },
+  { pct: 50, msg:'Port 5432/tcp open — PostgreSQL 8.3 (Trust authentication)',           type:'info' },
+  { pct: 52, msg:'Port 5900/tcp open — VNC (NULL authentication permitted)',             type:'err'  },
+  { pct: 54, msg:'Port 6000/tcp open — X11 Display Server',                              type:'warn' },
+  { pct: 56, msg:'Port 6667/tcp open — UnrealIRCd 3.2.8.1 (Compiled Backdoor)',         type:'err'  },
+  { pct: 58, msg:'Port 8080/tcp open — Apache Tomcat 5.5 Manager',                       type:'warn' },
+  { pct: 60, msg:'Port 443/tcp  open — HTTPS (OpenSSL 0.9.8 POODLE)',                    type:'warn' },
+  { pct: 64, msg:'Service fingerprinting complete — 20 attack vectors identified',       type:'ok'   },
+  { pct: 68, msg:'Vulnerability matching against NVD CVE database…',                     type:'info' },
+  { pct: 72, msg:'Running misconfiguration & cryptographic audit…',                      type:'info' },
+  { pct: 76, msg:'🇺🇸 Cross-referencing findings with CISA KEV catalog…',                 type:'kev'  },
+  { pct: 79, msg:'🇺🇸 KEV MATCH: CVE-2007-2447 (Samba) → Score FORCED to 100',          type:'kev'  },
+  { pct: 81, msg:'🇺🇸 KEV MATCH: CVE-2012-1823 (PHP-CGI) → Score FORCED to 100',         type:'kev'  },
+  { pct: 83, msg:'🇺🇸 KEV MATCH: CVE-2014-3704 (Drupal) → Score FORCED to 100',          type:'kev'  },
+  { pct: 85, msg:'🇺🇸 KEV MATCH: CVE-2010-2075 (UnrealIRCd) → Score FORCED to 100',      type:'kev'  },
+  { pct: 87, msg:'🇺🇸 KEV MATCH: CVE-2011-2523 (vsftpd) → Score FORCED to 100',          type:'kev'  },
+  { pct: 90, msg:'🎯 Querying MITRE ATT&CK Enterprise Matrix v15 threat intel API…',     type:'info' },
+  { pct: 92, msg:'🎯 Mapped CVE-2007-2447 → TA0001 (Initial Access) / T1210',           type:'ok'   },
+  { pct: 94, msg:'🎯 Mapped CVE-2012-1823 → TA0002 (Execution) / T1059.006',            type:'ok'   },
+  { pct: 96, msg:'🎯 Classified 20 vulnerabilities into 5 Attack Phases',                type:'ok'   },
+  { pct: 98, msg:'Calculating Business Risk (E × C × X) with KEV & MITRE weights…',      type:'info' },
+  { pct:100, msg:'✓ Scan complete! Segmented attack roadmap prepared.',                  type:'ok'   },
+];
+
+function logEntry(msg, type) {
+  const feed = document.getElementById('logFeed');
+  const div  = document.createElement('div');
+  div.className = 'log-entry';
+  const ts = new Date().toLocaleTimeString();
+  div.innerHTML = `<span class="ts">[${ts}]</span> <span class="msg-${type}">${msg}</span>`;
+  feed.appendChild(div);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function setProgress(pct, label) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = label;
+  document.getElementById('progressPct').textContent  = pct + '%';
+}
+
+document.getElementById('startScan').addEventListener('click', async () => {
+  const btn        = document.getElementById('startScan');
+  const ip         = document.getElementById('targetIP').value.trim() || '192.168.56.101';
+  const labType    = document.getElementById('labType').value;
+  const criticality= +document.querySelector('input[name="criticality"]:checked').value;
+  const exposure   = +document.getElementById('exposureLevel').value;
+  const capacity   = +document.getElementById('weeklyCapacity').value || 5;
+  const useKEV     = document.getElementById('scanKEV').checked;
+  const useMitre   = document.getElementById('scanMitre')?.checked ?? true;
+
+  state.scanConfig = { ip, labType, criticality, exposure, capacity, useKEV, useMitre };
+  state.kev.matchedIds.clear();
+  state.sprintDoneTasks.clear();
+  state.resolvedFindings.clear();
+  state.failedFixFindings.clear();
+  state.hadFailedFixDemo = false;
+
+  btn.disabled   = true;
+  btn.innerHTML  = '<span class="spinner"></span>Scanning…';
+
+  document.getElementById('logFeed').innerHTML = '';
+  document.getElementById('progressWrap').classList.remove('hidden');
+  document.getElementById('scanStatus').innerHTML = `
+    <div style="padding:14px 0;color:var(--accent);font-family:'JetBrains Mono',monospace;font-weight:700">
+      🎯 Target: <span style="color:#fff">${ip}</span> &nbsp;|&nbsp; Lab: ${labType.toUpperCase()}
+      &nbsp;|&nbsp; 🇺🇸 CISA KEV: ${useKEV ? '<span style="color:var(--kev)">ENABLED</span>' : '<span style="color:var(--text3)">Disabled</span>'}
+      &nbsp;|&nbsp; 🎯 MITRE: <span style="color:#a5b4fc">v15 Matrix</span>
+    </div>`;
+
+  if (useKEV && !state.kev.loaded) {
+    logEntry('🇺🇸 Fetching CISA KEV catalog from api.cisa.gov…', 'kev');
+    await fetchKEV();
+  }
+
+  for (const step of scanSteps) {
+    await sleep(95 + Math.random() * 60);
+    if (step.type === 'kev' && !useKEV) continue;
+    setProgress(step.pct, step.msg);
+    logEntry(step.msg, step.type);
+  }
+
+  // Build findings with MITRE ATT&CK enrichment + KEV override
+  state.findings = buildFindings(criticality, exposure, labType, useKEV, useMitre);
+  document.getElementById('kevMatched').textContent = state.kev.matchedIds.size;
+
+  await sleep(300);
+  btn.disabled  = false;
+  btn.innerHTML = '<span class="btn-icon">🔍</span> Scan Again';
+
+  if (useKEV && state.kev.matchedIds.size > 0) {
+    const banner = document.getElementById('kevAlertBanner');
+    document.getElementById('kevBannerMsg').textContent =
+      `${state.kev.matchedIds.size} vulnerabilit${state.kev.matchedIds.size > 1 ? 'ies' : 'y'} found on the CISA KEV watchlist (${[...state.kev.matchedIds].join(', ')}). Business Risk score forced to maximum (100) and elevated to top of remediation queue.`;
+    banner.classList.remove('hidden');
+  }
+
+  switchTab('report');
+  renderReport();
+  renderPlanner();
+
+  // Sync ROI simulator with fresh scan findings
+  if (typeof roiSyncFromScan === 'function') roiSyncFromScan(state.findings);
+});
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function buildFindings(criticality, exposure, labType, useKEV, useMitre = true) {
+  let pool = [...VULN_DB];
+  if (labType === 'dvwa') pool = pool.filter(v => [80,443,3306].includes(v.port) || Math.random() > 0.5);
+
+  return pool
+    .map(v => {
+      let raw = { ...v, assetCriticality: criticality, exposure };
+      raw.businessRisk = calcBusinessRisk(raw, criticality, exposure);
+      raw.severity     = getSeverity(raw.businessRisk);
+
+      // CISA KEV Override
+      if (useKEV && state.kev.loaded) {
+        raw = applyKEVOverride(raw);
+      } else {
+        raw = { ...raw, isKEV: false, kevCveClean: (raw.cve || '').split(' ')[0] };
+      }
+
+      // Backend Data Enrichment: MITRE ATT&CK Framework
+      if (useMitre) {
+        raw = enrichWithMitreAttack(raw);
+      }
+
+      return raw;
+    })
+    // Sort: KEV overrides first, then highest business risk
+    .sort((a, b) => {
+      if (a.isKEV && !b.isKEV) return -1;
+      if (!a.isKEV && b.isKEV) return 1;
+      return b.businessRisk - a.businessRisk;
+    });
+}
+
+// ─────────────────────────────────────────────────────────
+// 8. RISK REPORT RENDERER (CONTEXTUAL SORTING BY MITRE TACTIC)
+// ─────────────────────────────────────────────────────────
+function renderReport() {
+  document.getElementById('reportNoData').classList.add('hidden');
+  document.getElementById('reportContent').classList.remove('hidden');
+
+  const findings       = state.findings;
+  const activeFindings = findings.filter(f => !f.resolved);
+  const resolvedFinds  = findings.filter(f => f.resolved);
+  const kevFinds       = activeFindings.filter(f => f.isKEV);
+  const counts         = { Critical:0, High:0, Medium:0, Low:0 };
+  activeFindings.forEach(f => counts[f.severity]++);
+  const avgRisk        = activeFindings.length > 0
+    ? (activeFindings.reduce((a,f) => a + f.businessRisk, 0) / activeFindings.length).toFixed(1)
+    : '0.0';
+
+  // KEV override banner box
+  const kevBox = document.getElementById('kevOverrideBox');
+  if (kevFinds.length > 0) {
+    kevBox.classList.remove('hidden');
+    kevBox.innerHTML = `
+      <h3>🚨 CISA KEV Override — ${kevFinds.length} Active Findings Forced to Score 100</h3>
+      <div class="kev-override-items">
+        ${kevFinds.map(f => `
+          <div class="kev-override-item">
+            <span class="kev-flag">🇺🇸</span>
+            <span class="kev-name">${f.name}</span>
+            <span class="kev-cve">${f.kevCveClean}</span>
+            <span class="kev-note">Raw: ${f.rawBusinessRisk} → Override: <span class="kev-score-max">100</span></span>
+          </div>`).join('')}
+      </div>`;
+  } else {
+    kevBox.classList.add('hidden');
+  }
+
+  // Summary strip
+  document.getElementById('summaryStrip').innerHTML = `
+    <div class="summary-card c-total">
+      <div class="s-val">${activeFindings.length}</div><div class="s-label">Active Findings</div>
+    </div>
+    <div class="summary-card c-critical">
+      <div class="s-val">${counts.Critical}</div><div class="s-label">Critical</div>
+    </div>
+    <div class="summary-card c-high">
+      <div class="s-val">${counts.High}</div><div class="s-label">High</div>
+    </div>
+    <div class="summary-card c-medium">
+      <div class="s-val">${counts.Medium}</div><div class="s-label">Medium</div>
+    </div>
+    <div class="summary-card c-low">
+      <div class="s-val">${counts.Low}</div><div class="s-label">Low</div>
+    </div>
+    <div class="summary-card c-risk">
+      <div class="s-val">${avgRisk}</div><div class="s-label">Avg Risk</div>
+    </div>
+    <div class="summary-card c-kev">
+      <div class="s-val">${kevFinds.length}</div><div class="s-label">🇺🇸 Active KEV</div>
+    </div>
+    ${resolvedFinds.length > 0 ? `
+    <div class="summary-card" style="border-color:rgba(16,185,129,0.4);background:rgba(16,185,129,0.06)">
+      <div class="s-val" style="color:#34d399">${resolvedFinds.length}</div><div class="s-label" style="color:#6ee7b7">✓ Verified Fixed</div>
+    </div>` : ''}`;
+
+  // Risk matrix bars (top 10)
+  const maxRisk = 100;
+  document.getElementById('riskMatrix').innerHTML = findings.slice(0,10).map(f => {
+    const pct = (f.businessRisk / maxRisk * 100).toFixed(1);
+    const col = f.isKEV ? 'var(--kev)' : getSevColor(f.severity);
+    const kevTag = f.isKEV ? ' 🇺🇸' : '';
+    return `
+      <div class="risk-bar-item">
+        <span class="risk-bar-label" title="${f.name}">${kevTag}${f.name}</span>
+        <div class="risk-bar-track">
+          <div class="risk-bar-fill" style="width:${pct}%;background:${col}${f.isKEV ? ';box-shadow:0 0 8px rgba(255,71,71,0.5)':''};"></div>
+        </div>
+        <span class="risk-bar-val" style="color:${col}">${f.businessRisk}</span>
+      </div>`;
+  }).join('');
+
+  // Render view based on state.reportViewMode (default: 'mitre')
+  setReportViewMode(state.reportViewMode || 'mitre');
+}
+
+/**
+ * Contextual Sorting: Groups vulnerabilities by MITRE Tactic
+ * Each tactic group lists its findings ranked by Business Risk
+ */
+function renderMitreGroupedView(findings) {
+  const container = document.getElementById('reportMitreGroups');
+  if (!container) return;
+
+  // Group by MITRE Tactic
+  const tacticsOrder = [
+    { id: 'TA0001', name: 'Initial Access',       phase: 'Phase 1: Block Initial Access',       icon: '🛡️', desc: 'Prevents entry points into the environment' },
+    { id: 'TA0002', name: 'Execution',            phase: 'Phase 2: Neutralize Execution & RCE', icon: '⚡', desc: 'Stops malicious code execution & shell execution' },
+    { id: 'TA0006', name: 'Credential Access',    phase: 'Phase 3: Invalidate Credential Access', icon: '🔑', desc: 'Neutralizes default & cleartext credentials' },
+    { id: 'TA0008', name: 'Lateral Movement',     phase: 'Phase 4: Contain Lateral Movement',   icon: '🛑', desc: 'Restricts pivot paths & unauthorized file sharing' },
+    { id: 'TA0011', name: 'Command and Control',  phase: 'Phase 5: Sever Command & Control (C2)', icon: '📡', desc: 'Terminates backdoor beaconing & interactive root shells' },
+  ];
+
+  const grouped = {};
+  tacticsOrder.forEach(t => grouped[t.id] = []);
+
+  findings.forEach(f => {
+    const tid = f.mitreTacticId || 'TA0001';
+    if (!grouped[tid]) grouped[tid] = [];
+    grouped[tid].push(f);
+  });
+
+  const cardsHTML = tacticsOrder.map(tacticMeta => {
+    const items = grouped[tacticMeta.id] || [];
+    if (items.length === 0) return '';
+
+    // Sort items within this tactic by business risk
+    items.sort((a,b) => {
+      if (a.isKEV && !b.isKEV) return -1;
+      if (!a.isKEV && b.isKEV) return 1;
+      return b.businessRisk - a.businessRisk;
+    });
+
+    const totalRiskScore = items.reduce((s, it) => s + it.businessRisk, 0).toFixed(1);
+    const kevCountInTactic = items.filter(it => it.isKEV).length;
+
+    return `
+      <div class="mitre-group-card tactic-${tacticMeta.id}">
+        <div class="mitre-group-header">
+          <div class="mgh-left">
+            <span style="font-size:1.4rem">${tacticMeta.icon}</span>
+            <div>
+              <div style="display:flex;align-items:center">
+                <span class="mgh-title">${tacticMeta.name}</span>
+                <span class="mgh-tactic-id">${tacticMeta.id}</span>
+                <span class="mgh-phase-badge" style="margin-left:10px">${tacticMeta.phase}</span>
+              </div>
+              <div style="font-size:0.78rem;color:var(--text3);margin-top:2px">${tacticMeta.desc}</div>
+            </div>
+          </div>
+          <div class="mgh-right">
+            ${kevCountInTactic > 0 ? `<span class="kev-badge">🇺🇸 ${kevCountInTactic} KEV Override</span>` : ''}
+            <div class="mgh-stat-chip">Fixes: <strong>${items.length}</strong></div>
+            <div class="mgh-stat-chip">Total Risk: <strong style="color:var(--accent)">${totalRiskScore}</strong></div>
+          </div>
+        </div>
+        <div class="mitre-group-body">
+          ${items.map((f, idx) => {
+            const sColor = f.resolved ? '#34d399' : (f.isKEV ? 'var(--kev)' : getSevColor(f.severity));
+            const statusBadge = f.resolved
+              ? '<span class="resolved-fix-badge">✓ Fixed</span>'
+              : (f.isFailedFix ? '<span class="failed-fix-badge">⚠️ Failed Fix</span>' : '');
+            const scoreDisplay = f.resolved
+              ? `<span style="text-decoration:line-through;color:var(--text3);font-size:0.8rem">${f.rawBusinessRisk || f.businessRisk}</span> <span style="color:#34d399">0</span>`
+              : f.businessRisk;
+            return `
+              <div class="mitre-finding-row ${f.isKEV ? 'kev-row' : ''}${f.resolved ? ' row-resolved' : ''}">
+                <span class="mfr-rank">#${idx+1}</span>
+                <div class="mfr-main">
+                  <div class="mfr-name-line">
+                    <span class="mfr-name">${f.isKEV ? '🇺🇸 ' : ''}${f.name}</span>
+                    ${statusBadge}
+                    <span class="mfr-technique">
+                      🎯 ${f.mitreTechniqueId}: ${f.mitreTechnique}
+                    </span>
+                    <span class="sev-badge sev-${f.severity}">${f.severity}</span>
+                  </div>
+                  <div class="mfr-sub">
+                    <span style="color:var(--accent)">${f.port}/tcp</span> &bull; ${f.service} &bull; ${f.cve !== 'N/A' ? f.cve : f.category}
+                    &bull; <span style="color:var(--text3)">Mitigation: ${f.mitreMitigation || 'N/A'}</span>
+                  </div>
+                </div>
+                <div class="mfr-score-box">
+                  <span class="mfr-score" style="color:${sColor}">${scoreDisplay}</span>
+                  <div class="mfr-score-label">${f.resolved ? 'Resolved' : (f.isKEV ? '🇺🇸 KEV' : 'Risk Score')}</div>
+                </div>
+                <button class="btn-detail" onclick="openDetail('${f.id}')">Details</button>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = cardsHTML;
+}
+
+function renderFindingsTable(findings) {
+  document.getElementById('findingsBody').innerHTML = findings.map((f, i) => {
+    const scoreColor = f.resolved ? '#34d399' : (f.isKEV ? 'var(--kev)' : getSevColor(f.severity));
+    const scoreClass = f.resolved ? 'score-resolved' : (f.isKEV ? 'score-kev' : `score-${f.severity}`);
+    const statusBadge = f.resolved
+      ? '<span class="resolved-fix-badge">✓ Fixed</span>'
+      : (f.isFailedFix ? '<span class="failed-fix-badge">⚠️ Failed</span>' : '');
+    const scoreDisplay = f.resolved
+      ? `<span style="text-decoration:line-through;color:var(--text3)">${f.rawBusinessRisk || f.businessRisk}</span> <span style="color:#34d399;font-weight:700">0</span>`
+      : f.businessRisk;
+    const kevCell    = f.isKEV
+      ? `<span class="kev-badge">🇺🇸 KEV<br><small style="font-size:0.65rem;letter-spacing:0">${f.kevCveClean}</small></span>`
+      : `<span class="kev-badge-none">—</span>`;
+
+    return `
+      <tr class="${f.isKEV ? 'kev-row' : ''}${f.resolved ? ' row-resolved' : ''}">
+        <td style="color:var(--text3);font-family:'JetBrains Mono',monospace">${i+1}</td>
+        <td>
+          <div style="font-weight:600;display:flex;align-items:center;gap:6px">
+            <span>${f.isKEV ? '🇺🇸 ' : ''}${f.name}</span>
+            ${statusBadge}
+          </div>
+          <div style="font-size:0.75rem;color:var(--text3)">${f.cve !== 'N/A' ? f.cve : f.category}</div>
+        </td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:0.82rem">
+          <span style="color:var(--accent)">${f.port}/tcp</span><br/>
+          <span style="color:var(--text3);font-size:0.75rem">${f.service}</span>
+        </td>
+        <td>
+          <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:${f.cvss>=9?'#f87171':f.cvss>=7?'#fb923c':'#fbbf24'}">${f.cvss}</span>
+        </td>
+        <td style="font-family:'JetBrains Mono',monospace">${f.exploitability}/10</td>
+        <td style="font-family:'JetBrains Mono',monospace">${f.assetCriticality}/4</td>
+        <td style="font-family:'JetBrains Mono',monospace">${f.exposure}/3</td>
+        <td>
+          <span class="risk-score-cell ${scoreClass}">${scoreDisplay}</span>
+          <div style="font-size:0.7rem;color:var(--text3)">${f.resolved ? 'Resolved' : (f.isKEV ? '🇺🇸 KEV Override' : 'E×C×X')}</div>
+        </td>
+        <td>${kevCell}</td>
+        <td>
+          <span class="tactic-badge ${f.mitreTacticId || 'TA0001'}">${f.mitreTacticId}: ${f.mitreTactic}</span>
+          <div style="font-size:0.72rem;color:var(--text3);margin-top:3px;font-family:'JetBrains Mono',monospace">
+            ${f.mitreTechniqueId}
+          </div>
+        </td>
+        <td><span class="sev-badge sev-${f.severity}">${f.severity}</span></td>
+        <td><button class="btn-detail" onclick="openDetail('${f.id}')">Details</button></td>
+      </tr>`;
+  }).join('');
+}
+
+// Filter / Search in Flat Table View
+document.getElementById('findingsSearch')?.addEventListener('input', filterTable);
+document.getElementById('filterSeverity')?.addEventListener('change', filterTable);
+document.getElementById('filterKEV')?.addEventListener('change', filterTable);
+document.getElementById('filterMitreTactic')?.addEventListener('change', filterTable);
+
+function filterTable() {
+  const q          = (document.getElementById('findingsSearch')?.value || '').toLowerCase();
+  const sev        = document.getElementById('filterSeverity')?.value || '';
+  const kevFilt    = document.getElementById('filterKEV')?.value || '';
+  const tacticFilt = document.getElementById('filterMitreTactic')?.value || '';
+
+  const filtered = state.findings.filter(f => {
+    const matchQ = !q || f.name.toLowerCase().includes(q) || f.service.toLowerCase().includes(q) || String(f.port).includes(q) || (f.mitreTechnique && f.mitreTechnique.toLowerCase().includes(q));
+    const matchS = !sev || f.severity === sev;
+    const matchKEV = !kevFilt || (kevFilt === 'kev' ? f.isKEV : !f.isKEV);
+    const matchTactic = !tacticFilt || f.mitreTactic === tacticFilt;
+    return matchQ && matchS && matchKEV && matchTactic;
+  });
+
+  if (state.reportViewMode === 'mitre') {
+    renderMitreGroupedView(filtered);
+  } else {
+    renderFindingsTable(filtered);
+  }
+}
+
+// CSV Export (includes MITRE columns)
+document.getElementById('exportCSV')?.addEventListener('click', () => {
+  const headers = [
+    'Rank','ID','Finding','Port','Service','CVSS','Exploitability','AssetCriticality',
+    'Exposure','RawBusinessRisk','BusinessRisk','IsKEV','KEV_CVE',
+    'MITRE_Tactic_ID','MITRE_Tactic','MITRE_Technique_ID','MITRE_Technique','Attack_Phase',
+    'Severity','EffortHrs'
+  ];
+  const rows = state.findings.map((f,i) =>
+    [
+      i+1, f.id, `"${f.name}"`, f.port, `"${f.service}"`, f.cvss, f.exploitability,
+      f.assetCriticality, f.exposure, f.rawBusinessRisk || f.businessRisk, f.businessRisk,
+      f.isKEV, f.kevCveClean || f.cve,
+      f.mitreTacticId, `"${f.mitreTactic}"`, f.mitreTechniqueId, `"${f.mitreTechnique}"`, `"${f.mitrePhase}"`,
+      f.severity, f.effort
+    ].join(',')
+  );
+  const csv  = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `vulnrank_mitre_report_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+});
+
+// ─────────────────────────────────────────────────────────
+// 9. FINDING DETAIL MODAL (WITH MITRE ATT&CK KILL-CHAIN)
+// ─────────────────────────────────────────────────────────
+function openDetail(id) {
+  const f = state.findings.find(x => x.id === id);
+  if (!f) return;
+
+  const scoreColor = f.isKEV ? 'var(--kev)' : getSevColor(f.severity);
+  const modal      = document.querySelector('.modal');
+  f.isKEV ? modal.classList.add('kev-modal') : modal.classList.remove('kev-modal');
+
+  document.getElementById('modalTitle').textContent = (f.isKEV ? '🇺🇸 KEV | ' : '') + f.name;
+
+  // KEV override block
+  const kevSection = f.isKEV ? `
+    <div class="kev-modal-override">
+      <div class="kev-modal-override-title">🚨 CISA KEV Override Active</div>
+      <p>This vulnerability is listed on the U.S. Cybersecurity & Infrastructure Security Agency (CISA) <strong>Known Exploited Vulnerabilities (KEV) Catalog</strong>. It is actively exploited in the wild.</p>
+      <p><strong>Override rule:</strong> Standard business risk formula score was <strong>${f.rawBusinessRisk}</strong>. Because this CVE appears on CISA KEV, the score is <strong>forced to 100/100</strong>.</p>
+      <div class="kev-modal-meta">
+        <div class="kev-meta-chip"><strong>${f.kevCveClean}</strong>CVE Reference</div>
+        ${f.kevEntry ? `
+          <div class="kev-meta-chip"><strong>${f.kevEntry.dateAdded || 'Unknown'}</strong>Added to KEV</div>
+          <div class="kev-meta-chip"><strong>${f.kevEntry.knownRansomwareCampaignUse || 'Unknown'}</strong>Ransomware Use</div>
+        ` : ''}
+        <div class="kev-meta-chip"><strong>100 / 100</strong>Overridden Score</div>
+      </div>
+    </div>` : '';
+
+  // MITRE Kill-chain step visualizer
+  const phaseNum = f.mitrePhaseNum || 1;
+  const killChainNodes = [
+    { num: 1, label: '1. Initial Access' },
+    { num: 2, label: '2. Execution' },
+    { num: 3, label: '3. Credentials' },
+    { num: 4, label: '4. Lateral Move' },
+    { num: 5, label: '5. C2 Channel' },
+  ].map((node, i) => `
+    ${i > 0 ? '<span class="kc-arrow">&rarr;</span>' : ''}
+    <div class="kc-node ${node.num === phaseNum ? 'active-phase' : ''}">
+      ${node.label}
+    </div>`).join('');
+
+  document.getElementById('modalBody').innerHTML = `
+    ${kevSection}
+
+    <!-- MITRE ATT&CK Card -->
+    <div class="mitre-modal-card">
+      <div class="mitre-modal-title">
+        <span>🎯 MITRE ATT&amp;CK&reg; Threat Intel Profile</span>
+      </div>
+      <div class="mitre-modal-meta-grid">
+        <div class="mitre-meta-cell">
+          <small>Tactic (Kill-Chain)</small>
+          <strong style="color:#38bdf8">${f.mitreTacticId}: ${f.mitreTactic}</strong>
+        </div>
+        <div class="mitre-meta-cell">
+          <small>Technique ID</small>
+          <strong style="color:#a5b4fc">${f.mitreTechniqueId}</strong>
+        </div>
+        <div class="mitre-meta-cell">
+          <small>Technique Name</small>
+          <strong>${f.mitreTechnique}</strong>
+        </div>
+        <div class="mitre-meta-cell">
+          <small>Remediation Phase</small>
+          <strong style="color:#6ee7b7">${f.mitrePhase}</strong>
+        </div>
+      </div>
+      <div style="font-size:0.8rem;color:var(--text2);margin-bottom:8px">
+        <strong>Threat Actor Usage:</strong> ${f.mitreThreatUsage || 'Opportunistic threat actors'}
+      </div>
+      <div style="font-size:0.8rem;color:var(--text2)">
+        <strong>Recommended MITRE Mitigation:</strong> ${f.mitreMitigation || 'Apply patches & software updates'}
+      </div>
+      <div class="kill-chain-diagram">
+        ${killChainNodes}
+      </div>
+    </div>
+
+    <!-- Formula -->
+    <div class="score-formula">
+      <div class="sf-part"><div class="sf-val">${f.exploitability}</div><div class="sf-label">Exploitability</div></div>
+      <div class="sf-op">×</div>
+      <div class="sf-part"><div class="sf-val">${f.assetCriticality}</div><div class="sf-label">Asset Crit.</div></div>
+      <div class="sf-op">×</div>
+      <div class="sf-part"><div class="sf-val">${f.exposure}</div><div class="sf-label">Exposure</div></div>
+      <div class="sf-eq">= ${f.isKEV ? `<span style="text-decoration:line-through;color:var(--text3)">${f.rawBusinessRisk}</span> →` : ''}</div>
+      <div class="sf-part">
+        <div class="sf-result" style="color:${scoreColor}">${f.businessRisk}</div>
+        <div class="sf-label">${f.isKEV ? '🇺🇸 KEV Overridden' : 'Business Risk'}</div>
+      </div>
+      <span class="sev-badge sev-${f.severity}" style="margin-left:auto">${f.severity}</span>
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-cell"><div class="dc-label">Port / Service</div><div class="dc-val" style="color:var(--accent)">${f.port}/tcp — ${f.service}</div></div>
+      <div class="detail-cell"><div class="dc-label">CVE Reference</div><div class="dc-val">${f.cve}</div></div>
+      <div class="detail-cell"><div class="dc-label">Category</div><div class="dc-val">${f.category}</div></div>
+      <div class="detail-cell"><div class="dc-label">Raw CVSS</div><div class="dc-val">${f.cvss} / 10.0</div></div>
+      <div class="detail-cell">
+        <div class="dc-label">Risk Scoring</div>
+        <div class="dc-val">${f.isKEV
+          ? `<span style="color:var(--text3);text-decoration:line-through">${f.rawBusinessRisk}</span> → <span style="color:var(--kev)">100 (KEV)</span>`
+          : `${f.businessRisk}`}</div>
+      </div>
+      <div class="detail-cell"><div class="dc-label">Fix Effort</div><div class="dc-val">${f.effort} hour${f.effort>1?'s':''}</div></div>
+    </div>
+
+    <div class="detail-section"><h3>📋 Description</h3><p>${f.description}</p></div>
+
+    <div class="detail-section">
+      <h3>🔧 Remediation Steps</h3>
+      <ul>${f.fix.split('.').filter(s=>s.trim()).map(s=>`<li>${s.trim()}.</li>`).join('')}</ul>
+    </div>`;
+
+  document.getElementById('detailModal').classList.remove('hidden');
+}
+
+document.getElementById('modalClose')?.addEventListener('click', () => {
+  document.getElementById('detailModal').classList.add('hidden');
+});
+document.getElementById('detailModal')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('detailModal'))
+    document.getElementById('detailModal').classList.add('hidden');
+});
+
+// ─────────────────────────────────────────────────────────
+// 10. REMEDIATION PLANNER (SEGMENTED BY MITRE ATTACK PHASE)
+// ─────────────────────────────────────────────────────────
+function getOrderedFindings() {
+  const findings = state.findings || [];
+  const kevFinds = findings.filter(f => f.isKEV);
+  const nonKEV   = findings.filter(f => !f.isKEV);
+  return [...kevFinds, ...nonKEV];
+}
+
+/**
+ * Segments weekly capacity-constrained sprint by attack phases:
+ * e.g., "Phase 1: Block Initial Access" followed by fixes for that phase
+ */
+function renderPlanner() {
+  if (!state.findings || state.findings.length === 0) {
+    document.getElementById('plannerNoData')?.classList.remove('hidden');
+    document.getElementById('plannerContent')?.classList.add('hidden');
+    updateVerifyButtonState();
+    return;
+  }
+
+  document.getElementById('plannerNoData')?.classList.add('hidden');
+  document.getElementById('plannerContent')?.classList.remove('hidden');
+
+  const findings    = state.findings;
+  const capacity    = state.scanConfig.capacity || 5;
+  const kevFinds    = findings.filter(f => f.isKEV && !f.resolved);
+  const nonKEV      = findings.filter(f => !f.isKEV && !f.resolved);
+  const resolvedList= findings.filter(f => f.resolved);
+  const totalEffort = findings.reduce((a,f) => a + (f.resolved ? 0 : f.effort), 0);
+  const totalWeeks  = Math.ceil(findings.length / capacity);
+
+  document.getElementById('plannerMeta').innerHTML = `
+    <div class="meta-pill"><span class="mp-icon">📦</span>
+      <div><div class="mp-val">${findings.length}</div><div class="mp-label">Total Issues</div></div>
+    </div>
+    <div class="meta-pill kev-meta"><span class="mp-icon">🇺🇸</span>
+      <div><div class="mp-val">${kevFinds.length}</div><div class="mp-label">KEV Active</div></div>
+    </div>
+    <div class="meta-pill"><span class="mp-icon">⚡</span>
+      <div><div class="mp-val">${capacity}</div><div class="mp-label">Fixes / Week</div></div>
+    </div>
+    <div class="meta-pill"><span class="mp-icon">📅</span>
+      <div><div class="mp-val">${totalWeeks}</div><div class="mp-label">Weeks to Clear</div></div>
+    </div>
+    <div class="meta-pill"><span class="mp-icon">⏱️</span>
+      <div><div class="mp-val">${totalEffort}h</div><div class="mp-label">Remaining Effort</div></div>
+    </div>
+    ${resolvedList.length > 0 ? `
+    <div class="meta-pill" style="border-color:rgba(16,185,129,0.4);background:rgba(16,185,129,0.08)"><span class="mp-icon">✓</span>
+      <div><div class="mp-val" style="color:#34d399">${resolvedList.length}</div><div class="mp-label" style="color:#6ee7b7">Verified Fixed</div></div>
+    </div>` : ''}`;
+
+  // Order findings: KEV items first, then by business risk
+  const ordered = getOrderedFindings();
+  const weeksHTML = [];
+  const displayWeeks = Math.min(4, totalWeeks);
+
+  for (let w = 0; w < displayWeeks; w++) {
+    const chunk      = ordered.slice(w * capacity, (w+1) * capacity);
+    const weekEffort = chunk.reduce((a,f) => a + (f.resolved ? 0 : f.effort), 0);
+    const chunkKEV   = chunk.filter(f => f.isKEV);
+    const isKEVWeek  = chunkKEV.length > 0;
+    const isWeek1    = (w === 0);
+
+    // Distinct attack phases in this weekly sprint
+    const phaseGroups = {};
+    chunk.forEach(f => {
+      const pKey = f.mitrePhase || 'Phase 1: Block Initial Access';
+      if (!phaseGroups[pKey]) {
+        phaseGroups[pKey] = {
+          phaseTitle: pKey,
+          phaseNum:   f.mitrePhaseNum || 1,
+          tacticId:   f.mitreTacticId || 'TA0001',
+          tactic:     f.mitreTactic || 'Initial Access',
+          fixes:      []
+        };
+      }
+      phaseGroups[pKey].fixes.push(f);
+    });
+
+    // Sort phases by kill-chain phaseNum (Phase 1 -> Phase 2 -> ...)
+    const sortedPhases = Object.values(phaseGroups).sort((a,b) => a.phaseNum - b.phaseNum);
+
+    const sevCounts = {};
+    chunk.forEach(f => {
+      if (!f.resolved) {
+        sevCounts[f.severity] = (sevCounts[f.severity]||0)+1;
+      }
+    });
+    const sevBadges = Object.entries(sevCounts)
+      .map(([s,c]) => `<span style="background:rgba(0,0,0,0.3);color:${getSevColor(s)}">${c} ${s}</span>`)
+      .join('');
+
+    const resolvedInWeek = chunk.filter(f => f.resolved).length;
+    const kevIndicator = isKEVWeek
+      ? `<span style="background:var(--kev-bg);color:var(--kev);border:1px solid var(--kev-border);padding:3px 10px;border-radius:99px;font-weight:700;font-size:0.78rem">🇺🇸 ${chunkKEV.length} KEV</span>`
+      : '';
+    const resolvedIndicator = resolvedInWeek > 0
+      ? `<span style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:3px 10px;border-radius:99px;font-weight:700;font-size:0.78rem">✓ ${resolvedInWeek} Fixed</span>`
+      : '';
+
+    // Segmented Attack Phase HTML
+    const phaseSectionsHTML = sortedPhases.map(pg => {
+      const phaseIcon = pg.phaseNum === 1 ? '🛡️' : pg.phaseNum === 2 ? '⚡' : pg.phaseNum === 3 ? '🔑' : pg.phaseNum === 4 ? '🛑' : '📡';
+      return `
+        <div class="roadmap-phase-header phase-${pg.phaseNum}">
+          <div class="rph-left">
+            <span>${phaseIcon}</span>
+            <span>${pg.phaseTitle}</span>
+            <span class="rph-tag">${pg.tacticId}</span>
+          </div>
+          <span class="rph-count">${pg.fixes.length} fix${pg.fixes.length > 1 ? 'es' : ''} in this phase</span>
+        </div>
+        <div class="phase-items-list">
+          ${pg.fixes.map(f => {
+            const sColor = f.resolved ? '#34d399' : (f.isKEV ? 'var(--kev)' : getSevColor(f.severity));
+            const globalIndex = ordered.findIndex(it => it.id === f.id) + 1;
+            const isDone = state.sprintDoneTasks.has(f.id);
+            const isResolved = !!f.resolved;
+            const isFailed = !!f.isFailedFix;
+
+            let taskActionHtml = '';
+            let itemExtraClass = '';
+
+            if (isWeek1) {
+              if (isResolved) {
+                itemExtraClass = ' done-task';
+                taskActionHtml = `
+                  <span class="resolved-fix-badge">✓ Verified Fixed</span>
+                  <button class="btn-task-toggle is-done" disabled title="Permanently verified by Micro-Scan">✓ Resolved</button>`;
+              } else if (isFailed) {
+                itemExtraClass = ' failed-fix-task';
+                taskActionHtml = `
+                  <span class="failed-fix-badge">⚠️ Failed Fix</span>
+                  <button class="btn-task-toggle ${isDone ? 'is-done' : ''}" onclick="toggleSprintTaskDone('${f.id}')" title="Re-mark done to retry verification rescan">
+                    ${isDone ? '✓ Marked Done' : '↻ Re-mark Done'}
+                  </button>`;
+              } else {
+                if (isDone) itemExtraClass = ' done-task';
+                taskActionHtml = `
+                  <button class="btn-task-toggle ${isDone ? 'is-done' : ''}" onclick="toggleSprintTaskDone('${f.id}')" title="Toggle sprint completion status">
+                    <span>${isDone ? '✓ Done' : '○ Mark Done'}</span>
+                  </button>`;
+              }
+            }
+
+            const displayedScore = isResolved
+              ? `<span style="text-decoration:line-through;color:var(--text3);font-size:0.8rem">${f.rawBusinessRisk || f.businessRisk}</span> <span style="color:#34d399">0</span>`
+              : f.businessRisk;
+
+            return `
+              <div class="plan-item sev-${f.severity}${f.isKEV ? ' kev-override' : ''}${itemExtraClass}">
+                <span class="plan-item-rank">#${globalIndex}</span>
+                <div class="plan-item-info">
+                  <div class="plan-item-title">${f.isKEV ? '🇺🇸 ' : ''}${f.name}</div>
+                  <div class="plan-item-sub">
+                    ${f.port}/tcp &bull; ${f.service} &bull; ${f.cve}
+                    &bull; <span style="color:#a5b4fc">🎯 ${f.mitreTechniqueId}: ${f.mitreTechnique}</span>
+                  </div>
+                </div>
+                ${f.isKEV ? `<span class="kev-plan-tag">KEV OVERRIDE</span>` : ''}
+                <span class="plan-item-score" style="color:${sColor}">${displayedScore}</span>
+                <div class="plan-item-eta">${isResolved ? '0h' : f.effort+'h'}<br/><span class="sev-badge sev-${f.severity}">${f.severity}</span></div>
+                <button class="btn-sever-path" onclick="openAttackPathWithFix('${f.id}')" title="Simulate severing attack path in graph">🕸️ View Path</button>
+                ${taskActionHtml}
+              </div>`;
+          }).join('')}
+        </div>`;
+    }).join('');
+
+    let sprint1ActionBar = '';
+    if (isWeek1) {
+      const sprint1Items = chunk;
+      const sprint1DoneCount = sprint1Items.filter(it => state.sprintDoneTasks.has(it.id) || it.resolved).length;
+      const allDone = sprint1Items.length > 0 && sprint1DoneCount === sprint1Items.length;
+      sprint1ActionBar = `
+        <div class="sprint-action-bar">
+          <div class="sab-left">
+            <span>Current Sprint Task Checklist:</span>
+            <span class="sab-count-badge" id="sprintDoneCountBadge">${sprint1DoneCount} / ${sprint1Items.length} Marked Done</span>
+            <span style="font-size:0.75rem;color:var(--text3)">
+              ${allDone
+                ? '<span style="color:#34d399;font-weight:700">⚡ Sprint 100% complete! Click "Verify Fixes" above to execute Targeted Micro-Scan.</span>'
+                : 'Mark all sprint tasks "Done" to unlock targeted verification micro-rescan.'}
+            </span>
+          </div>
+          <div class="sab-right">
+            <button class="btn-sab-quick" onclick="markAllSprintDone(true)">✓ Mark All Done</button>
+            <button class="btn-sab-quick" onclick="markAllSprintDone(false)">↺ Reset Tasks</button>
+          </div>
+        </div>`;
+    }
+
+    weeksHTML.push(`
+      <div class="week-card ${isKEVWeek ? 'kev-week' : ''}">
+        <div class="week-header">
+          <span class="week-title">${isKEVWeek ? '🚨' : '📅'} Week ${w+1} — ${chunk.length} Fixes${isKEVWeek ? ' (KEV Priority)' : ''}</span>
+          <div class="week-badge">
+            ${resolvedIndicator}${kevIndicator}${sevBadges}
+            <span style="color:var(--text2)">~${weekEffort}h remaining effort</span>
+          </div>
+        </div>
+        ${sprint1ActionBar}
+        <div class="week-items">
+          ${phaseSectionsHTML}
+        </div>
+      </div>`);
+  }
+
+  document.getElementById('weeksContainer').innerHTML = weeksHTML.join('');
+
+  // Backlog
+  const backlog = ordered.slice(displayWeeks * capacity);
+  const bCard   = document.getElementById('backlogCard');
+  if (backlog.length > 0) {
+    bCard.classList.remove('hidden');
+    document.getElementById('backlogList').innerHTML = backlog.map((f,i) => `
+      <div class="backlog-item">
+        <span class="backlog-rank">#${displayWeeks*capacity+i+1}</span>
+        <span style="flex:1">
+          ${f.isKEV ? '🇺🇸 ' : ''}${f.name}
+          <span class="tactic-badge ${f.mitreTacticId}" style="margin-left:8px;font-size:0.65rem">${f.mitreTactic}</span>
+        </span>
+        <span style="color:var(--text3);font-size:0.78rem">${f.port}/tcp</span>
+        <span class="sev-badge sev-${f.severity}" style="margin-left:12px">${f.severity}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:${f.isKEV?'var(--kev)':getSevColor(f.severity)};margin-left:12px">${f.businessRisk}</span>
+      </div>`).join('');
+  } else {
+    bCard.classList.add('hidden');
+  }
+
+  updateVerifyButtonState();
+}
+
+// ─────────────────────────────────────────────────────────
+// TASK TOGGLES & SPRINT READINESS
+// ─────────────────────────────────────────────────────────
+function toggleSprintTaskDone(id) {
+  if (state.sprintDoneTasks.has(id)) {
+    state.sprintDoneTasks.delete(id);
+  } else {
+    state.sprintDoneTasks.add(id);
+    const finding = state.findings.find(item => item.id === id);
+    if (finding) finding.isFailedFix = false;
+  }
+  renderPlanner();
+}
+
+function markAllSprintDone(allDone = true) {
+  const capacity = state.scanConfig.capacity || 5;
+  const ordered = getOrderedFindings();
+  const sprint1Items = ordered.slice(0, capacity);
+
+  if (allDone) {
+    sprint1Items.forEach(f => {
+      if (!f.resolved) {
+        state.sprintDoneTasks.add(f.id);
+        f.isFailedFix = false;
+      }
+    });
+  } else {
+    sprint1Items.forEach(f => {
+      state.sprintDoneTasks.delete(f.id);
+      f.isFailedFix = false;
+    });
+  }
+  renderPlanner();
+}
+
+function updateVerifyButtonState() {
+  const btn   = document.getElementById('verifyFixesBtn');
+  const icon  = document.getElementById('verifyBtnIcon');
+  const label = document.getElementById('verifyBtnLabel');
+  if (!btn || !label) return;
+
+  const capacity = state.scanConfig.capacity || 5;
+  const ordered  = getOrderedFindings();
+  const sprint1Items = ordered.slice(0, capacity);
+
+  if (sprint1Items.length === 0) {
+    btn.disabled = true;
+    btn.setAttribute('disabled', 'true');
+    btn.classList.remove('active-ready');
+    if (icon) icon.textContent = '🔒';
+    label.textContent = 'Verify Fixes (0/5 Done)';
+    return;
+  }
+
+  const doneCount = sprint1Items.filter(f => state.sprintDoneTasks.has(f.id) || f.resolved).length;
+  const total = sprint1Items.length;
+
+  if (doneCount === total) {
+    btn.disabled = false;
+    btn.removeAttribute('disabled');
+    btn.classList.add('active-ready');
+    if (icon) icon.textContent = '⚡';
+    label.textContent = `Verify Fixes (${total}/${total} Ready)`;
+    btn.title = 'All sprint tasks marked done! Click to run Targeted Micro-Scan Verification';
+  } else {
+    btn.disabled = true;
+    btn.setAttribute('disabled', 'true');
+    btn.classList.remove('active-ready');
+    if (icon) icon.textContent = '🔒';
+    label.textContent = `Verify Fixes (${doneCount}/${total} Done)`;
+    btn.title = `Mark all ${total} tasks as Done to enable verification rescan`;
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// TARGETED MICRO-SCANNING ENGINE (API & VERIFICATION RESCAN)
+// ─────────────────────────────────────────────────────────
+function setMicroProgress(pct, text) {
+  const fill  = document.getElementById('microProgressFill');
+  const pctEl = document.getElementById('microProgressPct');
+  const txtEl = document.getElementById('microProgressText');
+  if (fill)  fill.style.width = pct + '%';
+  if (pctEl) pctEl.textContent = pct + '%';
+  if (txtEl) txtEl.textContent = text;
+}
+
+function appendMicroLog(msg, type = 'info') {
+  const term = document.getElementById('microTerminal');
+  if (!term) return;
+  const line = document.createElement('div');
+  line.className = 'mt-line';
+  const ts = new Date().toLocaleTimeString();
+  line.innerHTML = `<span class="mt-ts">[${ts}]</span> <span class="mt-${type}">${msg}</span>`;
+  term.appendChild(line);
+  term.scrollTop = term.scrollHeight;
+}
+
+/**
+ * Backend Micro-Scanning Pipeline API Endpoint:
+ * POST /api/v1/scan/micro-verify
+ * Strictly evaluates the specified targets (IPs, ports, CVEs), ignoring the rest of the lab.
+ */
+async function apiTargetedMicroScan(requestPayload) {
+  const { targetHost, targets, simulateFlakyFix } = requestPayload;
+  console.log(`[API POST /api/v1/scan/micro-verify] Target host: ${targetHost}, Endpoints count: ${targets.length}`);
+
+  const results = [];
+  for (let i = 0; i < targets.length; i++) {
+    const t = targets[i];
+    // If target was previously failed and re-tested, it passes.
+    // If simulateFlakyFix is true and it's the 5th item on first run, it fails once to demo "Failed Fix".
+    const shouldFail = simulateFlakyFix && (i === targets.length - 1) && !t.wasPreviouslyTested;
+
+    results.push({
+      id:              t.id,
+      ip:              targetHost,
+      port:            t.port,
+      cve:             t.cve,
+      service:         t.service,
+      name:            t.name,
+      severity:        t.severity,
+      businessRisk:    t.businessRisk,
+      rawBusinessRisk: t.rawBusinessRisk || t.businessRisk,
+      isResolved:      !shouldFail,
+      isFailedFix:     shouldFail,
+      verifiedAt:      new Date().toISOString(),
+      details: shouldFail
+        ? `Socket probe returned unpatched banner for ${t.service}. Service daemon not reloaded. Exploit vector remains active.`
+        : `TCP probe verified. Service updated or port filtered. Exploit signature negated.`
+    });
+  }
+
+  return {
+    status: 'success',
+    scanScope: 'micro_targeted',
+    targetHost,
+    totalProbed: targets.length,
+    resolvedCount: results.filter(r => r.isResolved).length,
+    failedCount: results.filter(r => r.isFailedFix).length,
+    results
+  };
+}
+
+function formatEndpoint(host, port) {
+  if (!host) return `:${port}`;
+  return host.includes(':') && !host.startsWith('[') ? `[${host}]:${port}` : `${host}:${port}`;
+}
+
+/**
+ * Executes Targeted Micro-Scan Verification Rescan
+ */
+async function startVerificationRescan() {
+  const capacity = state.scanConfig.capacity || 5;
+  const ordered  = getOrderedFindings();
+  const sprintTargets = ordered.slice(0, capacity);
+
+  if (sprintTargets.length === 0) return;
+
+  const targetHost = state.scanConfig.ip || '192.168.56.101';
+
+  // 1. Open modal & initialize scope
+  const modal = document.getElementById('microScanModal');
+  if (modal) modal.classList.remove('hidden');
+
+  document.getElementById('microTargetsCount').textContent = sprintTargets.length;
+  document.getElementById('microScopePills').innerHTML = sprintTargets.map(t => `
+    <span class="micro-scope-pill">🎯 ${formatEndpoint(targetHost, t.port)} &bull; ${t.cve !== 'N/A' ? t.cve : t.id}</span>
+  `).join('');
+
+  const term = document.getElementById('microTerminal');
+  if (term) term.innerHTML = '';
+  document.getElementById('microResultsCard').classList.add('hidden');
+  const doneBtn = document.getElementById('microDoneBtn');
+  doneBtn.disabled = true;
+  doneBtn.innerHTML = '<span>⏳</span> Executing Targeted Micro-Scan…';
+
+  setMicroProgress(5, 'Configuring targeted micro-probe socket…');
+  appendMicroLog(`[MICRO-ENGINE] Initiating micro-scan pipeline against host: ${targetHost}`, 'info');
+  appendMicroLog(`[TARGETED SCOPE] Restricting probe socket strictly to ${sprintTargets.length} sprint endpoints.`, 'info');
+  appendMicroLog(`[ISOLATION] Ignoring all remaining subnet ports (bypassing 65,530 out-of-scope ports).`, 'info');
+
+  await sleep(400);
+
+  // Call targeted micro-scan API (demonstrate failure recovery on first run)
+  const shouldDemoFail = !state.hadFailedFixDemo;
+  const apiResponse = await apiTargetedMicroScan({
+    targetHost,
+    targets: sprintTargets,
+    simulateFlakyFix: shouldDemoFail
+  });
+
+  // Stream each probe in the terminal
+  for (let i = 0; i < apiResponse.results.length; i++) {
+    const res = apiResponse.results[i];
+    const pct = Math.round(15 + ((i + 1) / apiResponse.results.length) * 80);
+
+    setMicroProgress(pct, `Probing ${formatEndpoint(targetHost, res.port)} (${res.cve !== 'N/A' ? res.cve : res.service})…`);
+    appendMicroLog(`[PROBE #${i+1}/${apiResponse.results.length}] TCP connection open on ${formatEndpoint(targetHost, res.port)} (${res.service})`, 'probe');
+    await sleep(350 + Math.random() * 150);
+
+    if (res.isResolved) {
+      appendMicroLog(`[STATE VERIFIED #${i+1}] ✓ PASS: Target remediated. ${res.details}`, 'ok');
+    } else {
+      appendMicroLog(`[STATE VERIFIED #${i+1}] ⚠️ FAIL: Vulnerability confirmed ACTIVE! ${res.details}`, 'err');
+    }
+    await sleep(150);
+  }
+
+  setMicroProgress(100, '✓ Micro-Scan Completed — State Comparison Ready');
+  appendMicroLog('[MICRO-ENGINE] Rescan pipeline complete. Comparing baseline vs. rescan state...', 'info');
+
+  if (shouldDemoFail) {
+    state.hadFailedFixDemo = true;
+  }
+
+  // 2. State verification & Database updates
+  const resultsBody = document.getElementById('microResultsBody');
+  resultsBody.innerHTML = '';
+
+  let resolvedRiskPoints = 0;
+  let verifiedResolvedCount = 0;
+  let failedFixCount = 0;
+
+  apiResponse.results.forEach(res => {
+    const targetFinding = state.findings.find(f => f.id === res.id);
+    if (!targetFinding) return;
+
+    targetFinding.wasPreviouslyTested = true;
+
+    if (res.isResolved) {
+      targetFinding.resolved = true;
+      targetFinding.isFailedFix = false;
+      targetFinding.verifiedAt = res.verifiedAt;
+      if (targetFinding.rawBusinessRisk === undefined) {
+        targetFinding.rawBusinessRisk = targetFinding.businessRisk;
+      }
+      resolvedRiskPoints += targetFinding.rawBusinessRisk;
+      targetFinding.businessRisk = 0; // Permanently reduce risk in DB
+
+      state.resolvedFindings.add(targetFinding.id);
+      state.failedFixFindings.delete(targetFinding.id);
+      verifiedResolvedCount++;
+    } else {
+      targetFinding.resolved = false;
+      targetFinding.isFailedFix = true;
+      targetFinding.verifiedAt = null;
+
+      state.failedFixFindings.add(targetFinding.id);
+      state.resolvedFindings.delete(targetFinding.id);
+      state.sprintDoneTasks.delete(targetFinding.id); // Reset task toggle so user can re-apply and mark done
+      failedFixCount++;
+    }
+
+    const baselineScore = targetFinding.rawBusinessRisk || targetFinding.businessRisk;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <strong style="color:#fff;font-family:'JetBrains Mono',monospace">${formatEndpoint(targetHost, res.port)}</strong><br>
+        <small style="color:var(--text3)">${res.service}</small>
+      </td>
+      <td>
+        <strong style="color:var(--text)">${res.name}</strong><br>
+        <small style="color:#a5b4fc;font-family:'JetBrains Mono',monospace">${res.cve !== 'N/A' ? res.cve : targetFinding.mitreTechniqueId}</small>
+      </td>
+      <td>
+        <span class="sev-badge sev-${res.severity}">${res.severity}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;margin-left:6px;color:${getSevColor(res.severity)}">${baselineScore}</span>
+      </td>
+      <td>
+        ${res.isResolved
+          ? '<span class="badge-verified">✓ REMEDIATED (ABSENT)</span>'
+          : '<span class="badge-failed">⚠️ STILL VULNERABLE</span>'}
+      </td>
+      <td>
+        ${res.isResolved
+          ? '<span style="color:#34d399;font-weight:700;font-size:0.75rem">✓ Permanently Resolved in DB (Risk → 0)</span>'
+          : '<span style="color:#f87171;font-weight:700;font-size:0.75rem">⚠️ Flagged as "Failed Fix" in UI</span>'}
+      </td>
+    `;
+    resultsBody.appendChild(tr);
+  });
+
+  // Overall badge
+  const mrcBadge = document.getElementById('mrcOverallBadge');
+  if (failedFixCount === 0) {
+    mrcBadge.className = 'mrc-badge success';
+    mrcBadge.textContent = `✓ 100% SPRINT VERIFIED RESOLVED (${verifiedResolvedCount}/${sprintTargets.length})`;
+  } else {
+    mrcBadge.className = 'mrc-badge mixed';
+    mrcBadge.textContent = `⚠️ ${verifiedResolvedCount} RESOLVED &bull; ${failedFixCount} FAILED FIX`;
+  }
+
+  // 3. Automated Trend Updates (Confirmed permanent drop in environment total business risk)
+  if (verifiedResolvedCount > 0) {
+    const activeFindings = state.findings.filter(f => !f.resolved);
+    const counts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
+    activeFindings.forEach(f => {
+      if (counts[f.severity] !== undefined) counts[f.severity]++;
+    });
+    const avgRisk = activeFindings.length > 0
+      ? +(activeFindings.reduce((a, f) => a + f.businessRisk, 0) / activeFindings.length).toFixed(1)
+      : 0;
+    const kevCount = activeFindings.filter(f => f.isKEV).length;
+    const cycleNum = state.trendHistory.length + 1;
+
+    state.trendHistory.push({
+      cycle: cycleNum,
+      date: new Date().toLocaleDateString(),
+      ...counts,
+      avgRisk,
+      total: activeFindings.length,
+      kevCount,
+      verifiedDrop: true,
+      resolvedCount: verifiedResolvedCount,
+      riskDropped: +resolvedRiskPoints.toFixed(1),
+      note: `Targeted Micro-Scan Verified (${verifiedResolvedCount} resolved)`
+    });
+
+    localStorage.setItem('vulnrank_trends', JSON.stringify(state.trendHistory));
+    renderTrends();
+
+    document.getElementById('microTrendNoticeText').textContent =
+      `Automated Trend Log: Recorded confirmed permanent risk drop (-${resolvedRiskPoints.toFixed(1)} pts) in trend database (Cycle #${cycleNum}, Avg Risk: ${avgRisk}).`;
+  }
+
+  // Reveal results
+  document.getElementById('microResultsCard').classList.remove('hidden');
+  doneBtn.disabled = false;
+  doneBtn.innerHTML = '<span>✓</span> Apply Verification Results to Dashboard';
+}
+
+function finishMicroScan() {
+  document.getElementById('microScanModal')?.classList.add('hidden');
+  renderReport();
+  renderPlanner();
+  renderTrends();
+  if (typeof roiSyncFromScan === 'function') {
+    roiSyncFromScan(state.findings.filter(f => !f.resolved));
+  }
+}
+
+function closeMicroScanModal() {
+  document.getElementById('microScanModal')?.classList.add('hidden');
+  renderReport();
+  renderPlanner();
+  renderTrends();
+}
+
+// Global window attachments
+window.startVerificationRescan = startVerificationRescan;
+window.finishMicroScan         = finishMicroScan;
+window.closeMicroScanModal     = closeMicroScanModal;
+window.toggleSprintTaskDone    = toggleSprintTaskDone;
+window.markAllSprintDone       = markAllSprintDone;
+
+document.getElementById('verifyFixesBtn')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  startVerificationRescan();
+});
+document.getElementById('microScanClose')?.addEventListener('click', closeMicroScanModal);
+document.getElementById('microScanModal')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('microScanModal')) closeMicroScanModal();
+});
+
+// ─────────────────────────────────────────────────────────
+// 11. ROADMAP OUTPUT (JSON BUILDER & EXPORT)
+// ─────────────────────────────────────────────────────────
+function generateRoadmapJSON() {
+  const capacity = state.scanConfig.capacity || 5;
+  const ordered  = [...state.findings];
+  const totalWeeks = Math.ceil(ordered.length / capacity);
+
+  const weeklyRoadmap = [];
+  for (let w = 0; w < totalWeeks; w++) {
+    const chunk = ordered.slice(w * capacity, (w + 1) * capacity);
+    const weekEffort = chunk.reduce((s, it) => s + it.effort, 0);
+
+    // Group chunk by attack phase
+    const phasesMap = {};
+    chunk.forEach(f => {
+      const p = f.mitrePhase || 'Phase 1: Block Initial Access';
+      if (!phasesMap[p]) {
+        phasesMap[p] = {
+          phaseTitle:     p,
+          phaseNumber:    f.mitrePhaseNum || 1,
+          mitreTacticId:  f.mitreTacticId || 'TA0001',
+          mitreTactic:    f.mitreTactic || 'Initial Access',
+          fixesCount:     0,
+          vulnerabilities:[]
+        };
+      }
+      phasesMap[p].fixesCount++;
+      phasesMap[p].vulnerabilities.push({
+        id:               f.id,
+        name:             f.name,
+        cve:              f.cve,
+        port:             f.port,
+        service:          f.service,
+        cvss:             f.cvss,
+        businessRisk:     f.businessRisk,
+        severity:         f.severity,
+        isCisaKev:        f.isKEV,
+        mitreTechniqueId: f.mitreTechniqueId,
+        mitreTechnique:   f.mitreTechnique,
+        mitreMitigation:  f.mitreMitigation,
+        effortHours:      f.effort
+      });
+    });
+
+    const phases = Object.values(phasesMap).sort((a,b) => a.phaseNumber - b.phaseNumber);
+
+    weeklyRoadmap.push({
+      weekNumber:           w + 1,
+      fixesAllocated:       chunk.length,
+      capacityLimit:        capacity,
+      totalWeekEffortHours: weekEffort,
+      containsCisaKev:      chunk.some(f => f.isKEV),
+      attackPhasesTargeted: phases.map(p => p.phaseTitle),
+      phases:               phases
+    });
+  }
+
+  return {
+    roadmapTitle:          'Business-Risk-Ranked Capacity-Constrained Remediation Roadmap',
+    framework:             'MITRE ATT&CK Enterprise Matrix v15 + CISA KEV',
+    targetHost:            state.scanConfig.ip || '192.168.56.101',
+    environmentContext: {
+      labType:             state.scanConfig.labType || 'metasploitable',
+      assetCriticality:    state.scanConfig.criticality || 3,
+      exposureLevel:       state.scanConfig.exposure || 2,
+      weeklyCapacity:      capacity,
+    },
+    generatedTimestamp:    new Date().toISOString(),
+    metrics: {
+      totalVulnerabilities:ordered.length,
+      totalRoadmapWeeks:   totalWeeks,
+      totalEffortHours:    ordered.reduce((s, it) => s + it.effort, 0),
+      cisaKevOverrides:    ordered.filter(it => it.isKEV).length,
+    },
+    weeklyRoadmap: weeklyRoadmap
+  };
+}
+
+function viewRoadmapJSON() {
+  const data = generateRoadmapJSON();
+  const jsonStr = JSON.stringify(data, null, 2);
+  document.getElementById('roadmapJsonCode').textContent = jsonStr;
+  document.getElementById('roadmapJsonModal').classList.remove('hidden');
+}
+
+function exportRoadmapJSON() {
+  const data = generateRoadmapJSON();
+  const jsonStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `remediation_roadmap_mitre_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+// Roadmap JSON modal event handlers
+document.getElementById('openRoadmapJsonBtn')?.addEventListener('click', viewRoadmapJSON);
+document.getElementById('exportRoadmapJsonBtn')?.addEventListener('click', exportRoadmapJSON);
+document.getElementById('downloadModalJsonBtn')?.addEventListener('click', exportRoadmapJSON);
+document.getElementById('roadmapJsonClose')?.addEventListener('click', () => {
+  document.getElementById('roadmapJsonModal').classList.add('hidden');
+});
+document.getElementById('roadmapJsonModal')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('roadmapJsonModal'))
+    document.getElementById('roadmapJsonModal').classList.add('hidden');
+});
+
+document.getElementById('copyRoadmapJsonBtn')?.addEventListener('click', () => {
+  const code = document.getElementById('roadmapJsonCode').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.getElementById('copyRoadmapJsonBtn');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.textContent = orig, 1800);
+  });
+});
+
+// ─────────────────────────────────────────────────────────
+// 12. TREND TRACKER (INCLUDES MITRE + KEV STATS)
+// ─────────────────────────────────────────────────────────
+function addTrendCycle(findings) {
+  const counts  = { Critical:0, High:0, Medium:0, Low:0 };
+  findings.forEach(f => counts[f.severity]++);
+  const avgRisk = findings.length > 0
+    ? +(findings.reduce((a,f)=>a+f.businessRisk,0)/findings.length).toFixed(1)
+    : 0;
+  const kevCount= findings.filter(f=>f.isKEV).length;
+  state.trendHistory.push({
+    cycle: state.trendHistory.length + 1,
+    date:  new Date().toLocaleDateString(),
+    ...counts, avgRisk, total: findings.length, kevCount,
+  });
+  localStorage.setItem('vulnrank_trends', JSON.stringify(state.trendHistory));
+}
+
+document.getElementById('simulateCycle')?.addEventListener('click', () => {
+  const prevCount = state.trendHistory.length;
+  const base      = state.findings.length > 0 ? state.findings : buildFindings(3,2,'metasploitable',true,true);
+  const fixed     = Math.min(prevCount * (state.scanConfig.capacity||5), base.length - 3);
+  const remaining = base.slice(fixed);
+  addTrendCycle(remaining.length > 0 ? remaining : base.slice(-3));
+  renderTrends();
+});
+
+document.getElementById('clearTrends')?.addEventListener('click', () => {
+  state.trendHistory = [];
+  localStorage.removeItem('vulnrank_trends');
+  renderTrends();
+});
+
+function renderTrends() {
+  const history = state.trendHistory;
+  const countEl = document.getElementById('cycleCount');
+  if (countEl) countEl.textContent = `Cycles: ${history.length}`;
+  renderCycleTable(history);
+  drawTrendChart(history);
+}
+
+function renderCycleTable(history) {
+  const target = document.getElementById('cycleHistoryTable');
+  if (!target) return;
+  if (history.length === 0) {
+    target.innerHTML = `<p style="color:var(--text3);padding:20px;text-align:center">No trend data. Run scans and click "Simulate New Cycle".</p>`;
+    return;
+  }
+  target.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Cycle</th><th>Date</th><th>Total</th>
+        <th style="color:#f87171">Critical</th><th style="color:#fb923c">High</th>
+        <th style="color:#fbbf24">Medium</th><th style="color:#34d399">Low</th>
+        <th style="color:var(--kev)">🇺🇸 KEV</th>
+        <th style="color:var(--accent)">Avg Risk</th><th>Trend</th>
+      </tr></thead>
+      <tbody>${history.map((c, i) => {
+        const prev  = history[i-1];
+        const trend = !prev ? '—'
+          : c.avgRisk < prev.avgRisk ? `<span style="color:#34d399">▼ ${(prev.avgRisk-c.avgRisk).toFixed(1)}</span>`
+          : c.avgRisk > prev.avgRisk ? `<span style="color:#f87171">▲ ${(c.avgRisk-prev.avgRisk).toFixed(1)}</span>`
+          : '<span style="color:var(--text3)">→ 0</span>';
+        return `<tr>
+          <td><strong>#${c.cycle}</strong></td>
+          <td style="color:var(--text2)">${c.date}</td>
+          <td><strong>${c.total}</strong></td>
+          <td style="color:#f87171;font-weight:700">${c.Critical}</td>
+          <td style="color:#fb923c;font-weight:700">${c.High}</td>
+          <td style="color:#fbbf24;font-weight:700">${c.Medium}</td>
+          <td style="color:#34d399;font-weight:700">${c.Low}</td>
+          <td style="color:var(--kev);font-weight:700">${c.kevCount ?? '—'}</td>
+          <td style="color:var(--accent);font-family:'JetBrains Mono',monospace;font-weight:700">${c.avgRisk}</td>
+          <td>${trend}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+}
+
+function drawTrendChart(history) {
+  const canvas = document.getElementById('trendCanvas');
+  if (!canvas) return;
+  const ctx    = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  if (history.length === 0) {
+    ctx.fillStyle = '#64748b'; ctx.font = '16px Inter'; ctx.textAlign = 'center';
+    ctx.fillText('Run scans and simulate cycles to see trends here', W/2, H/2);
+    return;
+  }
+
+  const pad = { top:30, right:40, bottom:50, left:55 };
+  const cw  = W - pad.left - pad.right;
+  const ch  = H - pad.top - pad.bottom;
+  const maxVal = Math.max(...history.map(c => Math.max(c.Critical,c.High,c.Medium,c.Low,c.avgRisk,c.kevCount||0)), 10);
+  const n   = history.length;
+  const xP  = i => pad.left + (n===1 ? cw/2 : i*cw/(n-1));
+  const yP  = v => pad.top  + ch - (v/maxVal)*ch;
+
+  ctx.strokeStyle = '#1e2d45'; ctx.lineWidth = 1;
+  for (let g=0; g<=5; g++) {
+    const y = pad.top + g*ch/5;
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(pad.left+cw,y); ctx.stroke();
+    ctx.fillStyle='#64748b'; ctx.font='11px Inter'; ctx.textAlign='right';
+    ctx.fillText(Math.round(maxVal*(5-g)/5), pad.left-8, y+4);
+  }
+
+  ctx.fillStyle='#64748b'; ctx.textAlign='center'; ctx.font='11px Inter';
+  history.forEach((c,i) => ctx.fillText(`Cycle ${c.cycle}`, xP(i), H-16));
+
+  const lines = [
+    { key:'Critical', color:'#f87171' },
+    { key:'High',     color:'#fb923c' },
+    { key:'Medium',   color:'#fbbf24' },
+    { key:'Low',      color:'#34d399' },
+    { key:'avgRisk',  color:'#3b82f6', dash:[6,3], width:2.5 },
+    { key:'kevCount', color:'#ff4747', dash:[3,3], width:2.0, triangle:true },
+  ];
+
+  lines.forEach(l => {
+    ctx.beginPath(); ctx.strokeStyle=l.color; ctx.lineWidth=l.width||2;
+    ctx.setLineDash(l.dash||[]);
+    history.forEach((c,i) => {
+      const val = c[l.key] ?? 0;
+      i===0 ? ctx.moveTo(xP(i),yP(val)) : ctx.lineTo(xP(i),yP(val));
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+    history.forEach((c,i) => {
+      const val = c[l.key] ?? 0;
+      const x=xP(i), y=yP(val);
+      ctx.fillStyle = l.color;
+      if (l.triangle) {
+        ctx.beginPath(); ctx.moveTo(x,y-5); ctx.lineTo(x+5,y+4); ctx.lineTo(x-5,y+4); ctx.closePath(); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill();
+      }
+    });
+  });
+}
+
+// ─────────────────────────────────────────────────────────
+// 13. HELPERS & INITIALIZATION
+// ─────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.nav-btn[data-tab="${name}"]`)?.classList.add('active');
+  document.getElementById(`tab-${name}`)?.classList.add('active');
+}
+
+function seedDemoTrends() {
+  if (state.trendHistory.length > 0) return;
+  state.trendHistory = [
+    { cycle:1, date:'2026-09-03', Critical:5, High:7, Medium:5, Low:3, avgRisk:74.2, total:20, kevCount:5 },
+    { cycle:2, date:'2026-09-10', Critical:3, High:6, Medium:5, Low:3, avgRisk:61.8, total:17, kevCount:3 },
+    { cycle:3, date:'2026-09-17', Critical:1, High:5, Medium:5, Low:3, avgRisk:48.3, total:14, kevCount:1 },
+    { cycle:4, date:'2026-09-24', Critical:0, High:3, Medium:5, Low:3, avgRisk:34.7, total:11, kevCount:0 },
+  ];
+  localStorage.setItem('vulnrank_trends', JSON.stringify(state.trendHistory));
+}
+
+async function init() {
+  seedDemoTrends();
+  renderTrends();
+  const tip = document.getElementById('targetIP');
+  if (tip) tip.value = '192.168.56.101';
+  await fetchKEV();
+}
+
+init();

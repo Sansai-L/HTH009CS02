@@ -1,111 +1,137 @@
-# HTH009CS02 — Business-Risk-Ranked Vulnerability Scanner & Remediation Planner
-
-**Event**: HACK the HORIZON 2.0 (24-Hour Hackathon)  
-**Problem Statement**: HTH-CS-03 — Enterprise Security / IT Operations  
-**GitHub Repository**: [https://github.com/Sansai-L/HTH009CS02](https://github.com/Sansai-L/HTH009CS02)
+# 🛡️ VulnRankPro — Business-Risk Vulnerability Scanner & Remediation Planner
+> **Track:** Cybersecurity (HTH-CS-03) | **Architecture:** Zero-Dependency Client-Side SPA  
+> **Standards:** U.S. CISA KEV Catalog • MITRE ATT&CK® v15 • ISO 27001 / NIST CSF Aligned
 
 ---
 
-## 🎯 Executive Overview
+## 📌 Executive Overview
 
-Traditional vulnerability scanners (e.g. Nmap, OpenVAS, Nessus) produce long flat lists of findings sorted purely by raw CVSS scores, leading to **alert fatigue** for bandwidth-constrained security teams. 
+Traditional vulnerability scanners overwhelm security teams with 200+ raw CVSS findings without business context, without awareness of active in-the-wild exploitation, and without considering real engineering capacity constraints (teams can realistically fix only 3–7 items/week).
 
-**HTH009CS02** solves this by enriching technical findings with **Business Context** (Asset Criticality & Network Exposure) and **Threat Intelligence** (CISA Known Exploited Vulnerabilities + FIRST EPSS Exploit Probability), then running an exact **0/1 Knapsack Remediation Optimizer** to build the maximum risk-reduction sprint plan under fixed weekly engineering hours.
-
----
-
-## 🏗️ Architecture Pipeline (Sprint 1 – 4)
-
-```
-AUTHORIZED LAB TARGET (IP / Subnet)
-       ↓
-TARGET AUTHORIZATION GUARDRAIL (Private Subnet Whitelist / Evaluation Mode)
-       ↓
-LAB SCANNER & BANNER NORMALIZER (8 Port Signatures -> Standard Finding Schema)
-       ↓
-THREAT INTELLIGENCE ENRICHMENT (CISA KEV Catalog + FIRST EPSS Probability API)
-       ↓
-BUSINESS RISK ENGINE (Base BRS = Exploitability x Criticality x Exposure)
-                     (Final BRS = Base BRS x Threat Multiplier)
-       ↓
-0/1 KNAPSACK REMEDIATION OPTIMIZER (Maximize BRS Addressed subject to Capacity <= C)
-       ↓
-SQLITE DATABASE PERSISTENCE LAYER (Assets, ScanJobs, Vulnerabilities, Plans)
-       ↓
-INTERACTIVE WEB DASHBOARD (Survives Browser Refresh & App Restarts)
-```
+**VulnRankPro** transforms vulnerability management from a static to-do list into a dynamic risk intelligence platform:
+1. **Business-Risk Engine:** Evaluates risk via $\text{Exploitability} \times \text{Asset Criticality} \times \text{Exposure}$.
+2. **Live CISA KEV Integration:** Live feed from `api.cisa.gov` — forces active exploits to maximum risk ($100/100$) and prioritizes them in Sprint 1.
+3. **MITRE ATT&CK® Framework v15:** Contextual sorting and kill-chain phasing (Initial Access &rarr; Execution &rarr; Credential Access &rarr; Lateral Movement &rarr; Command and Control).
+4. **Interactive ROI Simulator:** Drag-and-drop planning board with Chart.js risk forecasting under capacity constraints.
+5. **Attack Path Topology Graph:** Concentric exposure zones and node scaling with real-time pivot path severing simulation.
+6. **One-Click Executive PDF Brief:** Board-ready briefing with jargon translation parser and risk ROI metrics.
+7. **Targeted Micro-Scan Rescan:** Closed-loop verification micro-scanner that probes only sprint endpoints and logs permanent risk drops.
 
 ---
 
-## 🧠 Business Risk & Threat Intelligence Scoring Methodology
+## 🚀 Quick Start (Zero Setup Required)
 
-We distinguish explicitly between technical severity, exploitation likelihood, and business context:
-- **CVSS**: Technical Severity ($0.0 - 10.0$)
-- **FIRST EPSS**: Exploitation Likelihood ($0.0 - 1.0$ / $0 - 100\%$)
-- **CISA KEV**: Active Real-World Exploitation ($True / False$)
-- **Asset Criticality**: Business Importance ($1.0 - 10.0$)
-- **Exposure**: Accessibility ($0.1 - 1.0$)
-
-### Mathematical Formula:
-
-$$\text{Base BRS} = \text{Exploitability} \times \text{Asset Criticality} \times \text{Exposure}$$
-
-$$\text{EPSS Contribution} = (\text{epss\_score} \times 0.5) \quad \text{if epss\_score is present else } 0.0$$
-
-$$\text{KEV Boost} = 0.5 \quad \text{if kev\_known\_exploited is True else } 0.0$$
-
-$$\text{Threat Multiplier} = 1.0 + \text{EPSS Contribution} + \text{KEV Boost} \in [1.0, 2.0]$$
-
-$$\text{Final Business Risk Score (BRS)} = \text{round}(\text{Base BRS} \times \text{Threat Multiplier}, 2)$$
-
----
-
-## 📡 Threat Intelligence Integration (Sprint 4)
-
-1. **CISA KEV Catalog**:
-   - Official JSON Feed: `https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json`
-   - Local Disk & Memory Cache: `app/threat_intel/cisa_kev_cache.json` (24h TTL).
-   - Flags active exploits in the wild (`🔴 EXPLOITED`).
-
-2. **FIRST EPSS API**:
-   - Official Endpoint: `https://api.first.org/data/v1/epss`
-   - Batched lookup with 3s timeout and local disk cache (`app/threat_intel/epss_cache.json`).
-   - Displays EPSS score & percentile (e.g. `97.5% (P99.8%)`).
-
-3. **Graceful Offline / Failure Fallback**:
-   - If CISA or FIRST EPSS APIs are offline or unreachable, `threat_intel_multiplier = 1.0`.
-   - Base BRS scoring, scanning, and 0/1 Knapsack remediation planning continue seamlessly **without crashing**.
-
----
-
-## 🔌 API Route Reference
-
-| Method | Route | Description |
-| :--- | :--- | :--- |
-| `GET` | `/` | Web Dashboard Interface |
-| `GET` | `/api/health` | Health Check (Returns active Sprint & Version) |
-| `POST` | `/api/scan` | Scans lab target, enriches with KEV/EPSS, scores BRS, persists to SQLite |
-| `POST` | `/api/plan` | Solves 0/1 Knapsack optimization, persists plan to SQLite |
-| `GET` | `/api/plan/latest` | **Browser Refresh Recovery**: Retrieves latest persisted plan from SQLite |
-| `GET` | `/api/threat-intel/{cve}` | Returns CISA KEV & FIRST EPSS data for a specific CVE |
-| `POST` | `/api/threat-intel/refresh` | Forces refresh of the CISA KEV catalog cache |
-| `POST` | `/api/findings/enrich` | Enriches findings list with threat intelligence |
-| `GET` | `/api/assets` | Retrieves tracked assets from SQLite |
-
----
-
-## ⚡ Quickstart & Setup Instructions
+VulnRankPro is an ultra-portable, zero-dependency Single Page Application (SPA). No Node.js, no Docker, and no backend servers are required.
 
 ```bash
-# 1. Install dependencies
-pip install -r requirements.txt
+# Clone the repository
+git clone https://github.com/Sansai-L/HTH009CS02.git
 
-# 2. Run the application
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+# Navigate to the folder
+cd HTH009CS02
 
-# 3. Access Dashboard
-# Open http://127.0.0.1:8000 in your web browser
-
-# 4. Run Test Suite (20 Automated Tests)
-python -m pytest -v
+# Simply open index.html in any modern web browser
+# (Chrome, Edge, Firefox, Brave, Safari)
+start index.html
 ```
+
+---
+
+## 🏗️ Architecture & Data Pipeline
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                      EXTERNAL THREAT INTELLIGENCE                      │
+│   • U.S. CISA KEV Live Catalog (api.cisa.gov / corsproxy.io)           │
+│   • MITRE ATT&CK Enterprise Matrix v15 (TA0001 - TA0011)               │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                           CORE RISK ENGINE                             │
+│   • Business-Risk Math: (Exploit/10) * (Crit/4) * (Exposure/3) * 100   │
+│   • CISA KEV Override: If CVE in KEV Set -> Risk = 100, Sev = Critical │
+│   • Threat Enrichment: Tactic ID, Technique ID, Kill-Chain Phase       │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+         ┌──────────────────────────┼──────────────────────────┐
+         ▼                          ▼                          ▼
+┌─────────────────┐       ┌──────────────────┐       ┌──────────────────┐
+│  RISK REPORT    │       │   REMEDIATION    │       │  ROI SIMULATOR   │
+│  • MITRE Group  │       │   • 5-Fix Sprint │       │  • Drag & Drop   │
+│  • Flat Table   │       │   • Task Toggles │       │  • Chart.js Line │
+│  • CSV Export   │       │   • Action Bar   │       │  • Capacity Gate │
+└────────┬────────┘       └─────────┬────────┘       └────────┬─────────┘
+         │                          │                         │
+         ▼                          ▼                         ▼
+┌─────────────────┐       ┌──────────────────┐       ┌──────────────────┐
+│   ATTACK PATH   │       │  EXECUTIVE PDF   │       │  MICRO-RESCAN    │
+│  • Concentric   │       │  • Zero-Jargon   │       │  • Target Probes │
+│  • Node Sizing  │       │  • Vector Donut  │       │  • State Compare │
+│  • Sever Beam   │       │  • CISO Signoff  │       │  • Trend DB Sync │
+└─────────────────┘       └──────────────────┘       └──────────────────┘
+```
+
+---
+
+## 📐 Mathematical Model & Scoring
+
+$$\text{Business Risk Score} = \left(\frac{\text{Exploitability}}{10}\right) \times \left(\frac{\text{Asset Criticality}}{4}\right) \times \left(\frac{\text{Exposure Level}}{3}\right) \times 100$$
+
+* **Exploitability ($1 - 10$):** Inherent ease of weaponization and exploit availability.
+* **Asset Criticality ($1 - 4$):**
+  * $1 =$ Low (Dev/Test Environment)
+  * $2 =$ Medium (Internal Shared Host)
+  * $3 =$ High (Production Application Server)
+  * $4 =$ Critical (Crown-Jewel Customer / Financial Database)
+* **Exposure Level ($1 - 3$):**
+  * $1 =$ Restricted / Air-gapped Internal Enclave
+  * $2 =$ DMZ / Semi-Public Supporting Service
+  * $3 =$ Public Internet-Facing
+
+### 🚨 CISA KEV Rule
+$$\text{If } \text{CVE} \in \text{CISA KEV Catalog} \implies \text{Business Risk} = 100.0, \quad \text{Severity} = \text{"Critical"}, \quad \text{Sprint Priority} = \#1$$
+
+---
+
+## 🎯 7 Core Innovations
+
+| # | Feature | Technology | Innovation |
+|---|---|---|---|
+| **1** | **Business-Risk Engine** | ES2022 Math | Replaces flat CVSS with real-world contextual exposure and criticality scoring. |
+| **2** | **CISA KEV Override** | REST API + Fallback | Live query against 1,100+ active exploits with auto-proxy and offline fallback. |
+| **3** | **MITRE ATT&CK Mapping** | Threat Intel Matrix | Contextual sorting grouping vulnerabilities into a 5-phase kill-chain. |
+| **4** | **ROI Simulator** | HTML5 DnD + Chart.js | Visualizes projected risk reduction curve under strict weekly capacity limits. |
+| **5** | **Attack Path Topology** | SVG + Graph Layout | Concentric perimeter layout with animated red pivot beam and path severing. |
+| **6** | **Executive PDF Brief** | jsPDF + html2canvas | Jargon translation engine replacing CVE codes with business asset impacts. |
+| **7** | **Verification Micro-Scan** | Socket Simulation | Narrow-scope endpoint verification that locks until sprint completion. |
+
+---
+
+## 📊 Presentation Deck & Materials
+
+* **PowerPoint Presentation:** [`VulnRankPro_Hackathon_Presentation.pptx`](./VulnRankPro_Hackathon_Presentation.pptx) (15 Widescreen 16:9 Slides with Dark Cyber SOC theme)
+* **Demo Lab Target:** Metasploitable 2 (`192.168.56.101`) / DVWA / Custom Labs
+* **Supported Protocols:** Full IPv4, IPv6 (`[2001:db8::1]:port`), and FQDN hostname support.
+
+---
+
+## 🛠️ Repository File Structure
+
+```text
+HTH009CS02/
+├── index.html                             # Main application SPA interface
+├── style.css                              # Design system & dark SOC styling
+├── app.js                                 # Core scanner engine, MITRE DB, KEV API, & micro-rescan
+├── roi.js                                 # Drag-and-drop ROI simulator & Chart.js projection
+├── attack-path.js                         # SVG network topology & pivot path severing
+├── executive-summary.js                   # Jargon translation engine & jsPDF generation
+├── VulnRankPro_Hackathon_Presentation.pptx# Hackathon staff presentation slide deck
+├── README.md                              # Project documentation & technical guide
+└── .gitignore                             # Git ignore configuration
+```
+
+---
+
+## ⚖️ License & Ethical Disclosure
+Built for educational, hackathon, and defensive cybersecurity posture assessment. Always obtain explicit written authorization before scanning target networks. Aligns with ISO 27001, NIST CSF, and CISA operational directives.
