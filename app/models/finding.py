@@ -44,3 +44,4 @@ class RemediationPlan(BaseModel):
     deferred_count: int = Field(..., description="Number of vulnerabilities deferred")
     selected_vulnerabilities: List[VulnerabilityFinding] = Field(..., description="Vulnerabilities selected for current sprint")
     deferred_vulnerabilities: List[VulnerabilityFinding] = Field(..., description="Vulnerabilities deferred to future sprint")
+    optimization_rationale: Optional[str] = Field(default=None, description="Detailed optimization rationale explaining trade-offs")

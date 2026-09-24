@@ -27,7 +27,8 @@ class RemediationOptimizer:
                 selected_count=0,
                 deferred_count=len(deferred),
                 selected_vulnerabilities=[],
-                deferred_vulnerabilities=deferred
+                deferred_vulnerabilities=deferred,
+                optimization_rationale=f"Available capacity is {available_capacity}h. All vulnerabilities deferred to future sprints."
             )
 
         # Scale float values to integer precision for exact DP Knapsack (scale x10)
@@ -77,6 +78,22 @@ class RemediationOptimizer:
             if total_initial_risk > 0 else 0.0
         )
 
+        # Generate Human-Readable Rationale
+        selected_ids = ", ".join([f.finding_id for f in selected])
+        deferred_ids = ", ".join([f.finding_id for f in deferred])
+
+        deferred_higher_brs = []
+        min_selected_brs = min([f.business_risk or 0.0 for f in selected]) if selected else float('inf')
+        for d in deferred:
+            if (d.business_risk or 0.0) > min_selected_brs:
+                deferred_higher_brs.append(f"{d.finding_id} (BRS {d.business_risk}, Effort {d.remediation_effort}h)")
+
+        rationale = f"Evaluated all {n} findings under {available_capacity}h capacity limit. Selected {len(selected)} vulnerabilities [{selected_ids}] using {total_effort_used}h effort, addressing {total_risk_reduced} BRS ({risk_reduction_percentage}% of total risk)."
+        if deferred_higher_brs:
+            rationale += f" Note: Higher individual-BRS item(s) [{', '.join(deferred_higher_brs)}] were deferred because their effort cost prevents a better overall combination within the {available_capacity}h capacity limit."
+        elif deferred:
+            rationale += f" Deferred {len(deferred)} remaining vulnerabilities [{deferred_ids}] to future sprints."
+
         return RemediationPlan(
             available_capacity=round(available_capacity, 2),
             total_effort_used=total_effort_used,
@@ -87,5 +104,6 @@ class RemediationOptimizer:
             selected_count=len(selected),
             deferred_count=len(deferred),
             selected_vulnerabilities=selected,
-            deferred_vulnerabilities=deferred
+            deferred_vulnerabilities=deferred,
+            optimization_rationale=rationale
         )

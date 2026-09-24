@@ -17,6 +17,7 @@
         .table-dark { background-color: #1e293b; --bs-table-bg: #1e293b; }
         .hero-title { font-weight: 700; background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .metric-card { background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid #334155; }
+        .rationale-box { background-color: #1e293b; border-left: 4px solid #38bdf8; }
     </style>
 </head>
 <body class="p-4">
@@ -53,7 +54,7 @@
                     </div>
                     <div class="col-md-3">
                         <label for="available_capacity" class="form-label text-light">Weekly Capacity (Hours)</label>
-                        <input type="number" step="1.0" min="0.0" max="100.0" class="form-control bg-dark text-light border-secondary" id="available_capacity" value="10.0">
+                        <input type="number" step="1.0" min="0.0" max="100.0" class="form-control bg-dark text-light border-secondary" id="available_capacity" value="5.0">
                         <div class="form-text text-secondary">Max engineering hours/week.</div>
                     </div>
                     <div class="col-md-2 d-flex align-items-end gap-2">
@@ -68,34 +69,40 @@
             <div class="col-md-2.4 col-sm-6">
                 <div class="card p-3 metric-card text-center">
                     <span class="text-secondary small fw-bold">TOTAL CAPACITY</span>
-                    <h3 id="metricCapacity" class="text-info mb-0">10.0 hrs</h3>
+                    <h3 id="metricCapacity" class="text-info mb-0">5.0 hrs</h3>
                 </div>
             </div>
             <div class="col-md-2.4 col-sm-6">
                 <div class="card p-3 metric-card text-center">
                     <span class="text-secondary small fw-bold">EFFORT USED</span>
-                    <h3 id="metricUsed" class="text-warning mb-0">9.0 hrs</h3>
+                    <h3 id="metricUsed" class="text-warning mb-0">5.0 hrs</h3>
                 </div>
             </div>
             <div class="col-md-2.4 col-sm-6">
                 <div class="card p-3 metric-card text-center">
                     <span class="text-secondary small fw-bold">REMAINING CAPACITY</span>
-                    <h3 id="metricRemaining" class="text-success mb-0">1.0 hrs</h3>
+                    <h3 id="metricRemaining" class="text-success mb-0">0.0 hrs</h3>
                 </div>
             </div>
             <div class="col-md-2.4 col-sm-6">
                 <div class="card p-3 metric-card text-center">
-                    <span class="text-secondary small fw-bold">RISK REDUCED (%)</span>
-                    <h3 id="metricPct" class="text-primary mb-0">87.5%</h3>
+                    <span class="text-secondary small fw-bold">BRS ADDRESSED</span>
+                    <h3 id="metricBrsAddressed" class="text-primary mb-0">135.0 BRS</h3>
                 </div>
             </div>
             <div class="col-md-2.4 col-sm-6">
                 <div class="card p-3 metric-card text-center">
                     <span class="text-secondary small fw-bold">SPRINT PLAN</span>
-                    <h3 id="metricCounts" class="text-light mb-0">3 / 2</h3>
+                    <h3 id="metricCounts" class="text-light mb-0">2 / 6</h3>
                     <small class="text-secondary">Selected / Deferred</small>
                 </div>
             </div>
+        </div>
+
+        <!-- Rationale Callout Box -->
+        <div id="rationaleContainer" class="card p-3 rationale-box mb-4 d-none shadow-sm">
+            <h6 class="text-info mb-1 fw-bold">🧠 0/1 Knapsack Optimization Rationale:</h6>
+            <p id="rationaleText" class="mb-0 text-light small"></p>
         </div>
 
         <!-- Status & Guardrail Message -->
@@ -106,7 +113,7 @@
             <div class="card-header border-secondary d-flex justify-content-between align-items-center">
                 <span class="fw-semibold">📊 Risk-Ranked Vulnerabilities & Capacity-Optimized Remediation Roadmap</span>
                 <button id="btnGeneratePlan" class="btn btn-sm btn-success fw-bold px-3 d-none" onclick="triggerPlanGeneration()">
-                    ⚡ OPTIMIZE SPRINT PLAN (0/1 KNAPSACK)
+                    ⚡ RE-OPTIMIZE SPRINT PLAN
                 </button>
             </div>
             <div class="card-body p-0">
@@ -148,8 +155,6 @@
     </div>
 
     <script>
-        let currentFindings = [];
-
         document.getElementById('scanForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             await executeScanAndPlan();
@@ -170,7 +175,6 @@
             };
 
             try {
-                // Fetch Optimized Remediation Plan directly
                 const response = await fetch('/api/plan', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -186,7 +190,7 @@
                 }
 
                 statusAlert.className = 'alert alert-success shadow-sm mb-4 d-block';
-                statusAlert.innerText = `Optimization Complete! Selected ${data.selected_count} remediations using ${data.total_effort_used} hrs of capacity. Risk Reduced: ${data.risk_reduction_percentage}%.`;
+                statusAlert.innerText = `Optimization Complete! Selected ${data.selected_count} remediations using ${data.total_effort_used} hrs of capacity. BRS Addressed: ${data.total_risk_reduced} (${data.risk_reduction_percentage}%).`;
                 
                 document.getElementById('btnGeneratePlan').classList.remove('d-none');
                 renderPlanResults(data);
@@ -207,8 +211,14 @@
             document.getElementById('metricCapacity').innerText = `${data.available_capacity} hrs`;
             document.getElementById('metricUsed').innerText = `${data.total_effort_used} hrs`;
             document.getElementById('metricRemaining').innerText = `${data.remaining_capacity} hrs`;
-            document.getElementById('metricPct').innerText = `${data.risk_reduction_percentage}%`;
+            document.getElementById('metricBrsAddressed').innerText = `${data.total_risk_reduced} BRS`;
             document.getElementById('metricCounts').innerText = `${data.selected_count} / ${data.deferred_count}`;
+
+            // Rationale text
+            if (data.optimization_rationale) {
+                document.getElementById('rationaleContainer').classList.remove('d-none');
+                document.getElementById('rationaleText').innerText = data.optimization_rationale;
+            }
 
             const tbody = document.getElementById('findingsTableBody');
             tbody.innerHTML = '';
