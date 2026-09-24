@@ -447,6 +447,15 @@
             }
         }
 
+        function openCveLookupModal(cveId) {
+            if (!cveId) return;
+            document.getElementById('cveInputModal').value = cveId;
+            const modalEl = document.getElementById('threatIntelModal');
+            const modalObj = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modalObj.show();
+            lookupCveThreatIntel();
+        }
+
         async function loadLatestPersistedPlan() {
             try {
                 const res = await fetch('/api/plan/latest');
@@ -566,7 +575,9 @@
                     row.className = 'table-active';
                 }
                 
-                const cveDisplay = f.cve_id ? `<span class="badge bg-dark border border-secondary">${f.cve_id}</span>` : 'N/A';
+                const cveDisplay = f.cve_id ? 
+                    `<button class="btn btn-sm btn-outline-info font-monospace py-0 px-2" style="font-size: 0.8rem;" title="Click to lookup live CISA KEV & EPSS threat intelligence" onclick="openCveLookupModal('${f.cve_id}')">🔍 ${f.cve_id}</button>` : 
+                    'N/A';
                 
                 let epssDisplay = 'N/A';
                 if (f.epss_score !== null && f.epss_score !== undefined) {
