@@ -4,7 +4,7 @@ from typing import List
 from app.guardrail.validator import is_authorized_lab_target
 from app.models.finding import VulnerabilityFinding
 
-# Vulnerability signature database for common lab services with remediation attributes
+# Vulnerability signature database for common lab services with 8 test vulnerability signatures
 KNOWN_LAB_PORT_SIGNATURES = {
     21: {
         "service": "ftp",
@@ -36,6 +36,16 @@ KNOWN_LAB_PORT_SIGNATURES = {
         "remediation_effort": 6.0,
         "remediation_action": "Upgrade Apache httpd to >=2.4.58 and sanitize web application inputs"
     },
+    445: {
+        "service": "smb",
+        "version": "Samba 3.0.20",
+        "vulnerability": "Samba username map script Command Execution",
+        "cvss": 9.8,
+        "exploitability": 10.0,
+        "evidence": "SMB Banner: Samba 3.0.20-Debian",
+        "remediation_effort": 4.0,
+        "remediation_action": "Upgrade Samba to >=4.15 and disable SMBv1 protocol"
+    },
     3306: {
         "service": "mysql",
         "version": "MySQL 5.0.51a-3ubuntu5",
@@ -55,6 +65,26 @@ KNOWN_LAB_PORT_SIGNATURES = {
         "evidence": "PostgreSQL Server Connection Established on 5432",
         "remediation_effort": 5.0,
         "remediation_action": "Configure pg_hba.conf to enforce scram-sha-256 password authentication"
+    },
+    6379: {
+        "service": "redis",
+        "version": "Redis 4.0.1",
+        "vulnerability": "Unauthenticated Redis Remote Command Execution & Key Injection",
+        "cvss": 8.8,
+        "exploitability": 8.5,
+        "evidence": "Redis Protocol: +PONG Server version 4.0.1",
+        "remediation_effort": 2.0,
+        "remediation_action": "Enable Redis requirepass authentication and bind interface to 127.0.0.1"
+    },
+    8080: {
+        "service": "http-alt",
+        "version": "Apache Tomcat 8.5.19",
+        "vulnerability": "Unauthenticated Remote Code Execution in Apache Tomcat",
+        "cvss": 9.8,
+        "exploitability": 9.0,
+        "evidence": "HTTP Response Header: Server: Apache-Coyote/1.1 (Tomcat 8.5.19)",
+        "remediation_effort": 5.0,
+        "remediation_action": "Upgrade Apache Tomcat to >=9.0.85 and restrict manager app access"
     }
 }
 
@@ -103,9 +133,9 @@ class LabScanner:
         if use_mock:
             return cls.get_mock_findings(target, asset_criticality, exposure)
 
-        # Active Socket Banner Probe on common ports
+        # Active Socket Banner Probe on 8 standard lab ports
         findings = []
-        target_ports = [21, 22, 80, 3306, 5432]
+        target_ports = [21, 22, 80, 445, 3306, 5432, 6379, 8080]
         
         for port in target_ports:
             try:
